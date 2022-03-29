@@ -1,0 +1,9 @@
+{
+    "compilerOptions": {
+        "lib": ["ES2020"],
+        "checkJs": true,
+        "outDir": "dist",
+        "strict": true,
+        "forceConsistentCasingInFileNames": true
+    }
+}

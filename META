@@ -1,0 +1,3 @@
+Dependencies :
+- xclip -- for manipulating the clipboard
+- xdotool -- for manipulating windows, sending keys events, etc.

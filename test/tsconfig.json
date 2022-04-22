@@ -1,9 +1,14 @@
 {
     "compilerOptions": {
+        "target": "ES2017",
         "lib": ["ES2020"],
         "checkJs": true,
         "outDir": "dist",
         "strict": true,
-        "forceConsistentCasingInFileNames": true
-    }
+        "forceConsistentCasingInFileNames": true,
+        "experimentalDecorators": true,
+    },
+    "include": [
+        "./"
+    ]
 }

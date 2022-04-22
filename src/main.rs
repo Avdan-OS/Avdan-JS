@@ -1,8 +1,10 @@
 use v8;
 use std::env;
 use std::fs;
+use std::panic;
 
-use crate::api::clipboard_bind;
+use crate::api::clipboard;
+use crate::api::clipboard::ClipSource;
 use crate::api::debug_bind;
 use crate::api::utils_js;
 
@@ -63,88 +65,22 @@ fn main() {
             );
         }
 
-        // Avdan.Clipboard API
+        // Avdan.File API 
         {
-            let clipboard = v8::Object::new(scope);
-    
-            // Avdan.Clipboard.copy
-            {
-                let f = v8::FunctionBuilder::<v8::Function>::new(clipboard_bind::copy_clipboard).build(scope).unwrap();
-                
-                let n = v8::String::new(scope, "copy").unwrap();
-                utils_js::js_func_on_object(
-                    scope,
-                    &clipboard,
-                    n,
-                    f
-                );
-            }
-            // Avdan.Clipboard.paste 
-            // There are numerous accuracy errors with this method due to xdotool -- sawry !
-            {
-                let f = v8::FunctionBuilder::<v8::Function>::new(clipboard_bind::paste_text).build(scope).unwrap();
-                let l = v8::String::new(scope, "paste").unwrap();
-                utils_js::js_func_on_object(scope, &clipboard, l, f);
-            }
+            let file_api = api::file::AvFile::new().js(scope);
 
-            // Avdan.Clipboard.clear
-            {
-                let f = v8::FunctionBuilder::<v8::Function>::new(clipboard_bind::clear_clipboard).build(scope).unwrap();
-                let l = v8::String::new(scope, "clear").unwrap();
-                utils_js::js_func_on_object(scope, &clipboard, l, f);
-            }
+            let file_label = v8::String::new(scope, "File").unwrap();
+            
+            avdan_obj.set(
+                scope,
+                file_label.into(),
+                file_api.into()
+            );
+        }
 
-            // Avdan.Clipboard.read
-            {
-                let f = v8::FunctionBuilder::<v8::Function>::new(clipboard_bind::read_clipboard).build(scope).unwrap();
-                
-                let n = v8::String::new(scope, "read").unwrap();
-                utils_js::js_func_on_object(
-                    scope,
-                    &clipboard,
-                    n,
-                    f
-                );
-            }
-
-            // Avdan.Clipboard.readText
-            {
-                let f = v8::FunctionBuilder::<v8::Function>::new(clipboard_bind::read_text_clipboard).build(scope).unwrap();
-                
-                let n = v8::String::new(scope, "readText").unwrap();
-                utils_js::js_func_on_object(
-                    scope,
-                    &clipboard,
-                    n,
-                    f
-                );
-            }
-
-            // Avdan.Clipboard.formats
-            {
-                let f = v8::FunctionBuilder::<v8::Function>::new(clipboard_bind::formats_clipboard).build(scope).unwrap();
-                
-                let n = v8::String::new(scope, "formats").unwrap();
-                utils_js::js_func_on_object(
-                    scope,
-                    &clipboard,
-                    n,
-                    f
-                );
-            }
-
-            // Avdan.Clipboard.source
-            {
-                let f = v8::FunctionBuilder::<v8::Function>::new(clipboard_bind::source).build(scope).unwrap();
-                
-                let n = v8::String::new(scope, "source").unwrap();
-                utils_js::js_func_on_object(
-                    scope,
-                    &clipboard,
-                    n,
-                    f
-                );
-            }
+        // // Avdan.Clipboard API
+        {
+            let clipboard = clipboard::Clip::JS(scope);
 
             // Avdan.Clipboard
             let clipboard_label = v8::String::new(scope, "Clipboard").unwrap();
@@ -169,14 +105,15 @@ fn main() {
         // Create a string containing the JavaScript source code.
         let code = v8::String::new(scope, &source_code).unwrap();
 
-        // Compile the source code.
-        let script = v8::Script::compile(scope, code, None).unwrap();
-        // Run the script to get the result.
-        let result = script.run(scope).unwrap();
 
-        // Convert the result to a string and print it.
-        let result = to_string(scope, result);
-        println!("{}", result);
+        // Compile the source code.
+        let script = v8::Script::compile(scope, code, None);
+
+        // Check if there was an error in the javascript
+        if script.is_some() {
+            // Run the script to get the result.
+            script.unwrap().run(scope).unwrap();
+        }
 
     }
     unsafe {

@@ -15,14 +15,17 @@
 	// 	],
 	// 	"description": "Log output to console"
 	// }
-	"JS Callback": {
+	"JavaScript Callback": {
 		"scope": "rust",
-		"prefix": "@callback",
+		"prefix": "@js_callback",
 		"body": [
-			"pub fn $1(scope: &mut v8::HandleScope, _args : v8::FunctionCallbackArguments, mut rv : v8::ReturnValue) -> () {",
-			"\t$2",
-			"}"
+			"pub fn $1(",
+			"    scope: &mut v8::HandleScope,",
+			"    args : v8::FunctionCallbackArguments,",
+			"    mut rv : v8::ReturnValue",
+            ") {",
+            "    $2",
+            "}",
 		],
-		"description": "Create a JS callback function."
 	}
 }

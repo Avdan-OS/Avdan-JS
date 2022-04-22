@@ -1,3 +1,36 @@
-Dependencies :
-- xclip -- for manipulating the clipboard
-- xdotool -- for manipulating windows, sending keys events, etc.
+# What is this ?
+
+A JavaScript environment where AvdanOS Search extensions can run.
+
+## Features :
+- API
+    - OS Integration
+        - Clipboard Access [.]
+        - File System Access [.]
+    - Network Access [.] 
+
+## Executables
+An extension can use any program, as long as it is listed in the extension's manifest file. If a extension attempts to run a command that is not listed in its manifest file, a SecurityException is thrown.
+
+
+This both allows for fetching of dependencies, and for (slightly) better safety. 
+
+### Example
+A extension which gives the user an option to download YouTube videos has a command-line dependency of `youtube-dl` or `yt-dlp`.
+
+Therefore, in the extension's `manifest.avdan` file, it must declare the following in the `dependencies` section 
+
+## Core dependencies
+### Clipboard:
+- xclip
+### Window Management
+- xdotool
+
+
+# Contributors
+Hello down there, random devs.
+This repo's a bit of a mess right now, but the main jist is here.
+
+In terms of goals, the main goal is to:
+[.] Provide type declarations
+

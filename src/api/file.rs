@@ -1,8 +1,10 @@
 use std::{fs::{File, self}, io::{Write, Read}, slice};
 
+use avdanos_permissions::permission;
 use v8::{Local, HandleScope, Value, ObjectTemplate, Object};
 
-use super::utils_js::{self, Avdan};
+use super::utils_js::{self, _Avdan};
+use super::super::Avdan;
 
 pub struct AvFile {}
 
@@ -15,7 +17,7 @@ impl IOError {
     pub fn JS<'a>(&self, scope: &mut HandleScope<'a>) -> Local<'a, Value> {
         match self {
             Self::OSError(id) =>
-                utils_js::Avdan::Error::new(
+                utils_js::_Avdan::Error::new(
                     format!("F-OS{:?}", id),
                     format!(
                         "Error from OS with code: {:?}\nSee https://mariadb.com/kb/en/operating-system-error-codes/ for more information.",
@@ -23,7 +25,7 @@ impl IOError {
                     )
                 ).to_js(scope),
             Self::GenericError(code, msg) => 
-                utils_js::Avdan::Error::new(format!("{}", code), msg.to_string()).to_js(scope)
+                utils_js::_Avdan::Error::new(format!("{}", code), msg.to_string()).to_js(scope)
         }
         
     }
@@ -109,6 +111,7 @@ impl FileJS {
         return Ok(args.get(0).to_rust_string_lossy(scope));
     }
 
+    #[permission(avdan.file.write)]
     pub fn write(
         scope: &mut v8::HandleScope,
         args : v8::FunctionCallbackArguments,
@@ -148,7 +151,7 @@ impl FileJS {
                 slice::from_raw_parts(t, len)
             }.to_vec();
         } else {
-            let err = Avdan::Error::str("F001", "Invalid content type! Must be either Uint8Array or string!").to_js(scope);
+            let err = _Avdan::Error::str("F001", "Invalid content type! Must be either Uint8Array or string!").to_js(scope);
             scope.throw_exception(err);
             prom.reject(scope, err);
             return;
@@ -184,6 +187,7 @@ impl FileJS {
         }
     }
 
+    #[permission(avdan.file.read)]
     pub fn read(
         scope: &mut v8::HandleScope,
         args : v8::FunctionCallbackArguments,
@@ -232,7 +236,7 @@ impl FileJS {
                                         let str = String::from_utf8(content);
                                         match str {
                                             Err(_) => {
-                                                let err = Avdan::Error::str("F-1200", "Error converting bytes to string!").to_js(scope);
+                                                let err = _Avdan::Error::str("F-1200", "Error converting bytes to string!").to_js(scope);
                                                 scope.throw_exception(err);
                                                 prom.reject(scope, err);
                                                 return;

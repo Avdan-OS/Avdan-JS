@@ -26,7 +26,7 @@ pub fn set_func(
   }
 
 
-pub mod Avdan {
+pub mod _Avdan {
     pub struct Error {
         message : String,
         code : String,

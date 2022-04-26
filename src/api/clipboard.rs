@@ -9,8 +9,9 @@ use std::process::{Command, Stdio};
 use std::ptr;
 
 use v8::{FunctionCallbackArguments, HandleScope, Object, Local};
-
-use crate::utils_js::{self, Avdan};
+use avdanos_permissions::permission;
+use crate::Avdan;
+use crate::api::utils_js::{self, _Avdan as _Avdan};
 
 pub struct Clip {}
 impl Clip {
@@ -20,7 +21,7 @@ impl Clip {
         mut rv : v8::ReturnValue
     ) {
         if !args.get(0).is_string() {
-            let except = Avdan::Error::str("C-CLIP:NO-CLIP-FOUND", "Must be a valid clipboard source!").to_js(scope);
+            let except = _Avdan::Error::str("C-CLIP:NO-CLIP-FOUND", "Must be a valid clipboard source!").to_js(scope);
             scope.throw_exception(except.into());
             return;
         }
@@ -313,7 +314,7 @@ impl ClipboardJS {
     ) -> Option<String> {
         if args.length() == 0 {
             let exception =
-                Avdan::Error::str("C-COPY-0000A", "String to copy is empty!").to_js(scope);
+                _Avdan::Error::str("C-COPY-0000A", "String to copy is empty!").to_js(scope);
             scope.throw_exception(exception.into());
             return None;
         }
@@ -331,7 +332,7 @@ impl ClipboardJS {
     }
 
     // Clipboard.copy
-
+    #[permission(avdan.clipboard.write)]
     pub fn copy(
         scope: &mut v8::HandleScope,
         args: v8::FunctionCallbackArguments,
@@ -343,7 +344,7 @@ impl ClipboardJS {
 
         if str.is_none() {
             let err =
-                Avdan::Error::str("C-COPY-0000", "Must provide a string to copy!").to_js(scope);
+                _Avdan::Error::str("C-COPY-0000", "Must provide a string to copy!").to_js(scope);
             prom.reject(scope, err);
             scope.throw_exception(err);
             return;
@@ -366,7 +367,7 @@ impl ClipboardJS {
     }
 
     // Clipboard.clear
-
+    #[permission(avdan.clipboard.write)]
     pub fn clear(
         scope: &mut v8::HandleScope,
         args: v8::FunctionCallbackArguments,
@@ -401,6 +402,7 @@ impl ClipboardJS {
     }
 
     // Clipboard.copyRaw
+    #[permission(avdan.clipboard.write)]
     pub fn copy_raw(
         scope: &mut v8::HandleScope,
         args: v8::FunctionCallbackArguments,
@@ -501,6 +503,7 @@ impl ClipboardJS {
     }
 
     // Clipboard.readRaw
+    #[permission(avdan.clipboard.read)]
     pub fn read_raw(
         scope: &mut v8::HandleScope,
         args: v8::FunctionCallbackArguments,
@@ -548,6 +551,7 @@ impl ClipboardJS {
     }
 
     // Clipboard.read
+    #[permission(avdan.clipboard.read)]
     pub fn read(
         scope: &mut v8::HandleScope,
         args: v8::FunctionCallbackArguments,
@@ -572,6 +576,7 @@ impl ClipboardJS {
     }
 
     // Clipboard.readText
+    #[permission(avdan.clipboard.read)]
     pub fn read_text(
         scope: &mut v8::HandleScope,
         args : v8::FunctionCallbackArguments,
@@ -588,6 +593,7 @@ impl ClipboardJS {
       }
 
     // Clipboard.formats
+    #[permission(avdan.clipboard.read)]
     pub fn formats(
         scope: &mut v8::HandleScope,
         args : v8::FunctionCallbackArguments,
@@ -612,6 +618,7 @@ impl ClipboardJS {
       }
 
     // Clipboard.paste
+    #[permission(avdan.clipboard.type)]
     pub fn paste_text(
         scope: &mut v8::HandleScope,
         args : v8::FunctionCallbackArguments,

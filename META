@@ -5,7 +5,7 @@ A JavaScript environment where AvdanOS Search extensions can run.
 ## Features :
 - API
     - OS Integration
-        - Clipboard Access [.]
+        - Clipboard Access ✅
         - File System Access [.]
     - Network Access [.] 
 
@@ -34,3 +34,23 @@ This repo's a bit of a mess right now, but the main jist is here.
 In terms of goals, the main goal is to:
 [.] Provide type declarations
 
+
+## Security Policy
+
+### Permissions
+```
+avdan
+│   
+│   
+├───clipboard
+│   │   
+│   │   read    --- Reading of the contents of any clipboard.
+│   │   write   --- Modifying/Writing to the contents of any clipboard.
+│   │   type    --- Sending keystrokes.
+```
+
+
+
+let out = Avdan.Shell.exec("curl")
+                .args("https://google.com")
+                .text();

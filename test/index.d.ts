@@ -118,6 +118,11 @@ export namespace Avdan {
 
     }
 
+    export interface Shell {}
+
+    export namespace Shell {
+        
+    }
 
     export interface File {
         write(path: string, data: string | Uint8Array) : Promise<void>;
@@ -225,6 +230,7 @@ export namespace Avdan {
         }
     }
 
+    
     export namespace Environment {
         /**
          * @inherits Raycast
@@ -480,6 +486,7 @@ export namespace Avdan {
         export type URL = string;
         export type PathLike = string | URL;
     }
+
 
 }
 

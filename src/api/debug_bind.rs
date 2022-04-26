@@ -29,6 +29,14 @@ impl Colors {
     }
 }
 
+pub struct Debug {
+
+}
+
+impl Debug {
+    
+}
+
 fn type_of(value : v8::Local<v8::Value>) -> &str {
     if value.is_string() {
         return "string";

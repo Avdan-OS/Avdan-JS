@@ -23,7 +23,7 @@
 			"    scope: &mut v8::HandleScope,",
 			"    args : v8::FunctionCallbackArguments,",
 			"    mut rv : v8::ReturnValue",
-            ") {",
+            ") -> () {",
             "    $2",
             "}",
 		],

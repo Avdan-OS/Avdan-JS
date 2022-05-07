@@ -1,6 +1,6 @@
 # What is this ?
 
-A JavaScript environment where AvdanOS Search extensions can run.
+This repo aims to be a JavaScript environment where AvdanOS Serach extensions can run.
 
 ## Features :
 - API
@@ -8,6 +8,14 @@ A JavaScript environment where AvdanOS Search extensions can run.
         - Clipboard Access ✅
         - File System Access ⏲️ 
     - Network Access ⏲️
+
+## Try it out
+
+Run `cargo build && ./target/debug/proj ./test` to run a rudimentary sample extension,
+then paste the contents of the clipboard.
+
+
+
 
 
 ## Security Policy

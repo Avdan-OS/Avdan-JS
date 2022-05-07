@@ -11,7 +11,9 @@ This repo aims to be a JavaScript environment where AvdanOS Serach extensions ca
 
 ## Try it out
 
-Run `cargo build && ./target/debug/proj ./test` to run a rudimentary sample extension,
+1. Clone this repo.
+
+2. Run `cargo build && ./target/debug/proj ./test` to run a rudimentary sample extension,
 then paste the contents of the clipboard.
 
 

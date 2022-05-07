@@ -2,9 +2,10 @@
 export interface Avdan {
     Clipboard   :   Avdan.Clipboard;
     Debug       :   Avdan.Debug;
-    Environment :   Avdan.Environment;
-    LocalStorage:   Avdan.Storage.LocalStorage;
+    // Environment :   Avdan.Environment;
+    // LocalStorage:   Avdan.Storage.LocalStorage;
     File        :   Avdan.File;
+    Shell       :   Avdan.Shell;
 
 
     /**
@@ -107,7 +108,7 @@ export interface Avdan {
  * Ideally should be compatible with the existing Raycast extension API, which is documented here:
  * [Raycast API Reference](https://github.com/raycast/extensions/blob/main/docs/SUMMARY.md#api-reference).
  * 
- * Perhaps, even implement an entire React Reconciler as a compatability layer?
+ * Perhaps, even a compatability layer?
  */
 export namespace Avdan {
 
@@ -118,10 +119,22 @@ export namespace Avdan {
 
     }
 
-    export interface Shell {}
+    export interface Shell {
+        exec(...args: string[]) : Pipe.InputOutput<Uint8Array>;
+    }
 
-    export namespace Shell {
-        
+    export namespace Shell {}
+
+    export interface Pipe<T> {}
+
+    export namespace Pipe {
+        export interface Input<T> {
+            (source: T) : T;
+        }
+        export interface Output<T> {
+            pipe<I extends Input<T>>(dest: I) : Pipe<ReturnType<I>>;
+        }
+        export interface InputOutput<T> {}
     }
 
     export interface File {
@@ -231,6 +244,8 @@ export namespace Avdan {
     }
 
     
+
+    /// RAYCAST
     export namespace Environment {
         /**
          * @inherits Raycast

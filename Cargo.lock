@@ -14,11 +14,12 @@ dependencies = [
 ]
 
 [[package]]
-name = "avdanos-permissions"
+name = "avdanos-search-macros"
 version = "0.0.0"
 dependencies = [
  "quote",
  "syn",
+ "v8",
 ]
 
 [[package]]
@@ -94,7 +95,7 @@ dependencies = [
 name = "proj"
 version = "0.1.0"
 dependencies = [
- "avdanos-permissions",
+ "avdanos-search-macros",
  "colored",
  "serde",
  "serde_json",

@@ -8,6 +8,6 @@ edition = "2021"
 [dependencies]
 v8 = "0.42.0"
 colored = "2"
-avdanos-permissions = {path="./macros/permissions"}
+avdanos-search-macros = {path="./macros"}
 serde_json = "1.0.79"
 serde = {version="1.0.79", features=["derive"]}

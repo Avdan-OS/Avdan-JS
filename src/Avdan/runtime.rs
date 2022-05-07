@@ -1,15 +1,10 @@
 use v8;
-use std::env;
 use std::fs;
 use std::panic;
 
 use crate::Avdan::loader::Extension;
-
-use super::super::api;
-use api::clipboard;
-use api::clipboard::ClipSource;
-use api::debug_bind;
-use api::utils_js;
+use crate::core::JSApi;
+use crate::core::def_safe_property;
 
 use super::super::Avdan;
 
@@ -59,7 +54,7 @@ impl Runtime {
 
         // Make a global scope thing-y
         let global = context.global(scope);
-
+        
         /*
          *     Security Policy 
          * 🚧 UNDER CONSTRUCTION 🚧
@@ -68,72 +63,70 @@ impl Runtime {
         // Apply security policy
         extension.security().into_scope(scope);
 
+        // Test secure set
+        
         /*
          *  Avdan API  
          */
 
         // Avdan Global Interface
-        let key_avdan = v8::String::new(scope, "Avdan").unwrap();
+        // let key_avdan = v8::String::new(scope, "Avdan").unwrap();
         
         // The global Avdan Search API object.
-        let avdan_obj = v8::Object::new(scope);
-
-        // Avdan.Debug API
-        {
-            let debug = v8::Object::new(scope);
-
-            // Avdan.Debug.log
-            {
-                let label = v8::String::new(scope, "log").unwrap();
-                let func = v8::FunctionBuilder::<v8::Function>::new(debug_bind::log).build(scope).unwrap();
-            
-                debug.set(scope, label.into(), func.into());
-            }
-
-            // Avdan.Debug
-            let label = v8::String::new(scope, "Debug").unwrap();
-            
-            avdan_obj.set(
-                scope,
-                label.into(),
-                debug.into()
-            );
-        }
-
-        // Avdan.File API 
-        {
-            let file_api = api::file::AvFile::new().js(scope);
-
-            let file_label = v8::String::new(scope, "File").unwrap();
-            
-            avdan_obj.set(
-                scope,
-                file_label.into(),
-                file_api.into()
-            );
-        }
-
-        // // Avdan.Clipboard API
-        {
-            let clipboard = clipboard::Clip::JS(scope);
-
-            // Avdan.Clipboard
-            let clipboard_label = v8::String::new(scope, "Clipboard").unwrap();
-            
-            avdan_obj.set(
-                scope,
-                clipboard_label.into(),
-                clipboard.into()
-            );
-        }
+        // let avdan_obj = Avdan::api::AvdanAPI {};
         
+        // // Avdan.Debug API
+        // {
+        //     let debug = v8::Object::new(scope);
 
-        global.set(
-            scope,
-            key_avdan.into(),
-            avdan_obj.into()
-        );
+        //     // Avdan.Debug.log
+        //     {
+        //         let label = v8::String::new(scope, "log").unwrap();
+        //         let func = v8::FunctionBuilder::<v8::Function>::new(debug_bind::log).build(scope).unwrap();
+            
+        //         debug.set(scope, label.into(), func.into());
+        //     }
 
+        //     // Avdan.Debug
+        //     let label = v8::String::new(scope, "Debug").unwrap();
+            
+        //     avdan_obj.set(
+        //         scope,
+        //         label.into(),
+        //         debug.into()
+        //     );
+        // }
+
+        // // Avdan.File API 
+        // {
+        //     let file_api = api::file::AvFile::new().js(scope);
+
+        //     let file_label = v8::String::new(scope, "File").unwrap();
+            
+        //     avdan_obj.set(
+        //         scope,
+        //         file_label.into(),
+        //         file_api.into()
+        //     );
+        // }
+
+        // // // Avdan.Clipboard API
+        // {
+        //     let clipboard = clipboard::Clip::JS(scope);
+
+        //     // Avdan.Clipboard
+        //     let clipboard_label = v8::String::new(scope, "Clipboard").unwrap();
+            
+        //     avdan_obj.set(
+        //         scope,
+        //         clipboard_label.into(),
+        //         clipboard.into()
+        //     );
+        // }
+        
+        let avdan_js = Avdan::api::AvdanAPI{}.js(scope);
+
+        def_safe_property(scope, global, "Avdan", avdan_js.into());
         
         let source_code = fs::read_to_string(extension.main()).expect("Couldn't read `main` file!");
 

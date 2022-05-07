@@ -1,11 +1,11 @@
-use std::{fs::{File, self}, io::{Write, Read}, slice};
+use std::{fs::{File, self}, io::{Write}, slice};
 
-use avdanos_permissions::permission;
+use avdanos_search_macros::permission;
 use v8::{Local, HandleScope, Value, ObjectTemplate, Object};
 
-use super::utils_js::{self, _Avdan};
-use super::super::Avdan;
-
+use crate::api::utils_js::{self, _Avdan};
+use crate::Avdan;
+use crate::core::JSApi;
 pub struct AvFile {}
 
 enum IOError {
@@ -63,7 +63,11 @@ impl AvFile {
     }
 
 
-    pub fn js<'s>(&self, scope: &mut v8::HandleScope<'s>) -> Local<'s, Object> {
+    
+}
+
+impl JSApi for AvFile {
+    fn js<'s>(&self, scope: &mut v8::HandleScope<'s>) -> Local<'s, Object> {
         let mut file_api = ObjectTemplate::new(scope);
 
         // Avdan.File <>

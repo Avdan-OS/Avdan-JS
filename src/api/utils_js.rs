@@ -4,28 +4,6 @@ pub fn js_string<'s>(scope : &mut HandleScope<'s>, s : & str) -> v8::Local<'s, v
     return v8::String::new(scope, s).unwrap();
 }
 
-pub fn js_number<'a>(scope : &mut HandleScope<'a>, n : f64) -> v8::Local<'a, v8::Number> {
-    return v8::Number::new(scope, n);
-}
-
-pub fn js_func_on_object<'a, 'b>(scope : &mut HandleScope<'a>, obj : & v8::Local<'b, v8::Object>, name : v8::Local<'b, v8::String>, func : v8::Local<'b, v8::Function>) {
-    obj.set(scope, name.into(), func.into()).unwrap();
-}
-
-pub fn set_func(
-    scope: &mut v8::HandleScope<'_>,
-    obj: v8::Local<v8::Object>,
-    name: &'static str,
-    callback: impl v8::MapFnTo<v8::FunctionCallback>,
-  ) {
-    let key = v8::String::new(scope, name).unwrap();
-    let tmpl = v8::FunctionTemplate::new(scope, callback);
-    let val = tmpl.get_function(scope).unwrap();
-    val.set_name(key);
-    obj.set(scope, key.into(), val.into());
-  }
-
-
 pub mod _Avdan {
     pub struct Error {
         message : String,

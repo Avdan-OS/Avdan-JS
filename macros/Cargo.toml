@@ -1,5 +1,5 @@
 [package]
-name = "avdanos-permissions"
+name = "avdanos-search-macros"
 version = "0.0.0"
 edition = "2021"
 publish = false
@@ -10,3 +10,4 @@ proc-macro = true
 [dependencies]
 syn = {version="1.0.91", features=["full","fold"]}
 quote = "1.0.18"
+v8 = "0.42.0"

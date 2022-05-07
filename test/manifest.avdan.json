@@ -7,7 +7,8 @@
     "security": {
         "permissions": [
             "avdan.clipboard.*",
-            "avdan.file.*"
+            "avdan.file.*",
+            "avdan.shell.*"
         ],
         "commands" : [
             "youtube-dl"

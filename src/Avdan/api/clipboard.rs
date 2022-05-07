@@ -9,33 +9,18 @@ use std::process::{Command, Stdio};
 use std::ptr;
 
 use v8::{FunctionCallbackArguments, HandleScope, Object, Local};
-use avdanos_permissions::permission;
+use avdanos_search_macros::permission;
 use crate::Avdan;
 use crate::api::utils_js::{self, _Avdan as _Avdan};
+use crate::core::JSApi;
 
-pub struct Clip {}
-impl Clip {
-    pub fn source(
-        scope: &mut v8::HandleScope,
-        args : v8::FunctionCallbackArguments,
-        mut rv : v8::ReturnValue
-    ) {
-        if !args.get(0).is_string() {
-            let except = _Avdan::Error::str("C-CLIP:NO-CLIP-FOUND", "Must be a valid clipboard source!").to_js(scope);
-            scope.throw_exception(except.into());
-            return;
-        }
+pub struct AvClipboard {}
 
-        let source = args.get(0).to_rust_string_lossy(scope);
-
-        rv.set(match source.as_str() {
-            "primary" => ClipSource::PRIMARY.js(scope),
-            "secondary" => ClipSource::SECONDARY.js(scope),
-            _ => ClipSource::CLIPBOARD.js(scope),
-        }.into());
-    }
-
-    pub fn JS<'s>(scope: &mut v8::HandleScope<'s>) -> Local<'s, Object>{
+impl JSApi for AvClipboard {
+    fn js<'s>(
+        &self,
+        scope: &mut v8::HandleScope<'s>
+    ) -> Local<'s, Object> {
         let mut clipboard = v8::ObjectTemplate::new(scope);
         
         clipboard.set_internal_field_count(1);
@@ -57,6 +42,30 @@ impl Clip {
 
         return instance;
     }
+}
+
+impl AvClipboard {
+    pub fn source(
+        scope: &mut v8::HandleScope,
+        args : v8::FunctionCallbackArguments,
+        mut rv : v8::ReturnValue
+    ) {
+        if !args.get(0).is_string() {
+            let except = _Avdan::Error::str("C-CLIP:NO-CLIP-FOUND", "Must be a valid clipboard source!").to_js(scope);
+            scope.throw_exception(except.into());
+            return;
+        }
+
+        let source = args.get(0).to_rust_string_lossy(scope);
+
+        rv.set(match source.as_str() {
+            "primary" => ClipSource::PRIMARY.js(scope),
+            "secondary" => ClipSource::SECONDARY.js(scope),
+            _ => ClipSource::CLIPBOARD.js(scope),
+        }.into());
+    }
+
+    
 }
 
 #[derive(Copy, Clone)]

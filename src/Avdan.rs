@@ -28,6 +28,7 @@
 pub mod security;
 pub mod loader;
 pub mod runtime;
+pub mod api;
 
 pub struct Permission {
     contents: String,

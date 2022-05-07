@@ -8,6 +8,8 @@ pub struct Constraints {
     commands: Vec<String>,
 }
 
+const SECURITY_KEY : &str = "___SECURITY___";
+
 /**
  * Security::Constraints
  * 
@@ -81,13 +83,13 @@ impl Constraints {
 
         let external_perms = v8::External::new(scope, perms_unsafe);
 
-        let s = v8::String::new(scope, "___SECURITY___").unwrap();
-        global.set(scope, s.into(), external_perms.into());
+        let key = v8::String::new(scope, SECURITY_KEY).unwrap();
+        global.define_own_property(scope, key.into(), external_perms.into(), v8::READ_ONLY);
     }
 
     pub fn from_scope<'a>(scope: &mut v8::HandleScope<'a>) -> &'a Constraints {
         let global = scope.get_current_context().global(scope);
-        let s =  v8::String::new(scope, "___SECURITY___").unwrap();
+        let s =  v8::String::new(scope, SECURITY_KEY).unwrap();
         let val = global.get(scope, s.into()).expect("Expected the ___SECURITY___ variable!");
         let v : v8::Local<v8::External> = unsafe {
             mem::transmute::<v8::Local<v8::Value>, v8::Local<v8::External>>(val)
@@ -98,3 +100,4 @@ impl Constraints {
         }
     }
 }
+

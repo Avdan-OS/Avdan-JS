@@ -1,6 +1,9 @@
-use crate::core::{JSApi,};
+use std::{time::Duration, ffi::c_void, thread, cell::UnsafeCell, collections::HashMap};
+
+use crate::{core::{JSApi,}, Avdan::Runtime};
 use colored::*;
-use v8::{HandleScope, Value, Local, Object,};
+use futures::future::MaybeDone;
+use v8::{HandleScope, Value, Local, Object, PromiseResolver, FunctionCallbackArguments, ReturnValue, MapFnTo,};
 
 use crate::core::def_safe_function;
 
@@ -40,6 +43,7 @@ impl JSApi for AvDebug {
     ) -> Local<'a, Object> {
         let obj = v8::Object::new(scope);
         def_safe_function!(scope, obj, "log", AvDebug::log);
+        def_safe_function!(scope, obj, "wait", AvDebug::wait);
         obj
     }
 }
@@ -80,7 +84,39 @@ impl AvDebug {
             out.push(Self::inspect(scope, args.get(i), Some(0)));
         }
 
+       
+
         println!("{}", out.join(" "));
+    }
+
+    // Debug.log
+    pub fn wait(
+        scope   : &mut HandleScope,
+        args    : FunctionCallbackArguments,
+        mut rv  : ReturnValue
+    ) -> () {
+        let ms = args.get(0).int32_value(scope).unwrap_or(1000);
+
+        let tx = Runtime::tx_from_scope(scope);
+
+        println!("Starting timeout!");
+
+
+        let prom = PromiseResolver::new(scope).unwrap();
+        rv.set(prom.into());
+
+        let global_prom = v8::Global::new(scope, prom);
+
+
+
+        let prom_id = Runtime::prom_map_insert(scope, global_prom); 
+        thread::spawn(move || {
+            std::thread::sleep(Duration::from_millis(ms.try_into().unwrap()));
+            tx.send((prom_id, vec![12,34])).expect("Error occured whilst sending to runtime!");
+        });
+
+        println!("🤝 Promise ID: {:?}", prom_id);
+
     }
 
     // Simple inspector <Not Complete>

@@ -27,7 +27,7 @@
 
 pub mod security;
 pub mod loader;
-pub mod runtime;
+mod runtime;
 pub mod api;
 
 pub struct Permission {
@@ -58,3 +58,4 @@ impl Permission {
     }
 }
 
+pub use runtime::Runtime;

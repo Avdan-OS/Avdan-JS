@@ -1,3 +1,4 @@
+use std::any::TypeId;
 use std::cell::RefCell;
 use std::cell::UnsafeCell;
 use std::collections::HashMap;
@@ -37,20 +38,23 @@ const PROMISE_TABLE: &str = "___PROM___";
 type Index = u32; 
 type Prom = Global<PromiseResolver>;
 
+type TaskOut = (Index, Vec<u8>, TypeId);
+type PromTable = HashMap<Index, Prom>;
+
 pub struct Runtime<T> {
     tx: Option<Sender<T>>,
-    tasks : Option<HashMap<Index, Prom>>,
+    tasks : Option<PromTable>,
 }
 
-impl Runtime<(Index, Vec<u8>)> {
-    pub fn new() -> Runtime<(Index, Vec<u8>)> {
+impl Runtime<TaskOut> {
+    pub fn new() -> Runtime<TaskOut> {
         Runtime {
             tx : None,
             tasks : Some(HashMap::new()),
         }
     }
     
-    pub fn tx(&self) -> Sender<(Index, Vec<u8>)> {
+    pub fn tx(&self) -> Sender<TaskOut> {
         self.tx.as_ref().expect("Err: tx is None!").clone()
     }
 
@@ -76,7 +80,7 @@ impl Runtime<(Index, Vec<u8>)> {
 
         
         thread::spawn(move || {
-            let mut map : HashMap<Index, Prom> = HashMap::new();
+            let mut map : PromTable = HashMap::new();
             /*
              * V8 JavaScript (ECMAScript) Engine
              */
@@ -138,15 +142,27 @@ impl Runtime<(Index, Vec<u8>)> {
                 // Run the script to get the result.
                 script.expect("Error in the script!").run(scope).unwrap();
 
-                for (id, contents) in rx {
+                for (id, contents, out_type) in rx {
                     println!("⏱️Task finished!");
-                    println!("🤝🆔:\t{:?}\n📖:\t{:?}", id, contents);
+                    println!("🤝🆔:\t{:?}", id);
 
                     // Get Promise, and resolve it, then remove from the table.
                     let p = map.get(&id).expect("Should have got promise !");
                     let prom = p.open(scope);
-                    let udef = v8::undefined(scope);
-                    prom.resolve(scope, udef.into());
+
+
+
+                    if out_type == TypeId::of::<v8::String>() {
+                        let s = String::from_utf8(contents).unwrap();
+                        // println!("Value: {}", s);
+                        let st = v8::String::new(scope, s.as_str()).unwrap();
+
+                        prom.resolve(scope, st.into());
+                    } else {
+                        let u = v8::undefined(scope).into();
+                        prom.resolve(scope, u);
+                    }
+
                     map.remove(&id);
 
                     if map.len() == 0 {
@@ -163,14 +179,14 @@ impl Runtime<(Index, Vec<u8>)> {
         })
     }
 
-    pub fn tx_from_scope<'a>(scope: &mut HandleScope<'a>) -> Sender<(Index, Vec<u8>)> {
+    pub fn tx_from_scope<'a>(scope: &mut HandleScope<'a>) -> Sender<TaskOut> {
         let key =  v8::String::new(scope, TRANSMISSION_KEY).unwrap();
         let global = scope.get_current_context().global(scope);
 
         let __tx : Result<Local<External>, _> = global.get(scope, key.into()).unwrap().try_into();
         let _tx = __tx.expect("Cannot cast tx into v8::External !");
 
-        let tx = _tx.value() as *mut Sender<(Index, Vec<u8>)>;
+        let tx = _tx.value() as *mut Sender<TaskOut>;
 
         unsafe { tx.as_mut() }.expect("Cannot change as mut!").to_owned()
     }

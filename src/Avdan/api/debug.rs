@@ -1,9 +1,9 @@
-use std::{time::Duration, ffi::c_void, thread, cell::UnsafeCell, collections::HashMap};
+use std::{time::Duration, ffi::c_void, thread, cell::UnsafeCell, collections::HashMap, any::TypeId};
 
 use crate::{core::{JSApi,}, Avdan::Runtime};
 use colored::*;
 use futures::future::MaybeDone;
-use v8::{HandleScope, Value, Local, Object, PromiseResolver, FunctionCallbackArguments, ReturnValue, MapFnTo,};
+use v8::{HandleScope, Value, Local, Object, PromiseResolver, FunctionCallbackArguments, ReturnValue, MapFnTo, Global,};
 
 use crate::core::def_safe_function;
 
@@ -44,6 +44,7 @@ impl JSApi for AvDebug {
         let obj = v8::Object::new(scope);
         def_safe_function!(scope, obj, "log", AvDebug::log);
         def_safe_function!(scope, obj, "wait", AvDebug::wait);
+        def_safe_function!(scope, obj, "fetch", AvDebug::fetch);
         obj
     }
 }
@@ -110,13 +111,35 @@ impl AvDebug {
 
 
         let prom_id = Runtime::prom_map_insert(scope, global_prom); 
-        thread::spawn(move || {
+        let t = thread::spawn(move || {
             std::thread::sleep(Duration::from_millis(ms.try_into().unwrap()));
-            tx.send((prom_id, vec![12,34])).expect("Error occured whilst sending to runtime!");
+            tx.send((prom_id, vec![12,34], TypeId::of::<i32>())).expect("Error occured whilst sending to runtime!");
         });
 
         println!("🤝 Promise ID: {:?}", prom_id);
 
+    }
+
+    pub fn fetch(
+        scope   : &mut HandleScope,
+        args    : FunctionCallbackArguments,
+        mut rv  : ReturnValue
+    ) -> () {
+        let url = args.get(0).to_rust_string_lossy(scope);
+
+        let tx = Runtime::tx_from_scope(scope);
+
+        let prom = PromiseResolver::new(scope).unwrap();
+        rv.set(prom.into());
+        let g_prom = Global::new(scope, prom);
+
+        let prom_id = Runtime::prom_map_insert(scope, g_prom);
+        let thread = std::thread::spawn(move || {
+            let req = reqwest::blocking::get(url);
+            let v = req.unwrap().text().expect("Output").as_bytes().to_vec();
+
+            tx.send((prom_id, v, TypeId::of::<v8::String>())).expect("Tried to send vec over!");
+        });
     }
 
     // Simple inspector <Not Complete>

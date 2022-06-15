@@ -1,9 +1,9 @@
 use std::{time::Duration, ffi::c_void, thread, cell::UnsafeCell, collections::HashMap, any::TypeId};
 
-use crate::{core::{JSApi,}, Avdan::Runtime};
+use crate::{core::{JSApi, def_safe_property,}, Avdan::{Runtime, runtime::{Sink, Task, Type}}};
 use colored::*;
 use futures::future::MaybeDone;
-use v8::{HandleScope, Value, Local, Object, PromiseResolver, FunctionCallbackArguments, ReturnValue, MapFnTo, Global,};
+use v8::{HandleScope, Value, Local, Object, PromiseResolver, FunctionCallbackArguments, ReturnValue, MapFnTo, Global, Uint8Array, Number,};
 
 use crate::core::def_safe_function;
 
@@ -53,25 +53,16 @@ impl AvDebug {
     fn type_of(
         value : v8::Local<v8::Value>
     ) -> &str {
-        if value.is_string() {
-            return "string";
+        match value {
+            v if v.is_string() => "string",
+            v if v.is_function() => "function",
+            v if v.is_number() => "number",
+            v if v.is_array() => "array",
+            v if v.is_symbol() => "symbol",
+            v if v.is_object() => "object",
+            v if v.is_uint8_array() => "uint8_array",
+            _ => "unknown"
         }
-        if value.is_function() {
-            return "function";
-        }
-        if value.is_number() {
-            return "number";
-        }
-        if value.is_array() {
-            return "array";
-        }
-        if value.is_symbol() {
-            return "symbol";
-        }
-        if value.is_object() {
-            return "object";
-        }
-        return "unknown";
     } 
 
     // Debug.log
@@ -90,34 +81,47 @@ impl AvDebug {
         println!("{}", out.join(" "));
     }
 
+    pub fn tmp_helper_wait_tick<'a>(scope: &mut HandleScope<'a>, vec: Vec<u8>) -> Local<'a, Value> {
+        let _tick = vec.get(0).expect("Avdan.Debug.wait bad auxiliary Object Stricture !").to_owned();
+
+        let obj = Object::new(scope);
+        let tick = Number::new(scope, _tick as f64);
+        def_safe_property(scope, obj, "tick", tick.into());
+
+        obj.into()
+    }
+
     // Debug.log
     pub fn wait(
         scope   : &mut HandleScope,
         args    : FunctionCallbackArguments,
         mut rv  : ReturnValue
     ) -> () {
-        let ms = args.get(0).int32_value(scope).unwrap_or(1000);
+        let ticks = args.get(0).int32_value(scope).unwrap_or(10);
+        let ms = args.get(1).int32_value(scope).unwrap_or(1000);
 
-        let tx = Runtime::tx_from_scope(scope);
-
+        
         println!("Starting timeout!");
 
+        let prom = Task::new(
+            scope,
+            TypeId::of::<Sink>(),
+            move |(id, tx)| {
+                for tick in 0..ticks {
+                    std::thread::sleep(Duration::from_millis(ms.try_into().unwrap()));
+                    tx.send(
+                        Type::Auxiliary(
+                            "tick".to_string(),
+                            vec![tick as u8],
+                            Self::tmp_helper_wait_tick
+                        ).message(id)
+                    ).expect("Error sending to runtime!");
+                }  
+                Ok(vec![])
+            }
+        );
 
-        let prom = PromiseResolver::new(scope).unwrap();
         rv.set(prom.into());
-
-        let global_prom = v8::Global::new(scope, prom);
-
-
-
-        let prom_id = Runtime::prom_map_insert(scope, global_prom); 
-        let t = thread::spawn(move || {
-            std::thread::sleep(Duration::from_millis(ms.try_into().unwrap()));
-            tx.send((prom_id, vec![12,34], TypeId::of::<i32>())).expect("Error occured whilst sending to runtime!");
-        });
-
-        println!("🤝 Promise ID: {:?}", prom_id);
-
     }
 
     pub fn fetch(
@@ -127,19 +131,24 @@ impl AvDebug {
     ) -> () {
         let url = args.get(0).to_rust_string_lossy(scope);
 
-        let tx = Runtime::tx_from_scope(scope);
+        let prom = Task::new(
+            scope,
+            TypeId::of::<v8::Uint8Array>(),
+            move |_tx| {
+                let req = reqwest::blocking::get(url);
+                match req {
+                    Err(err) => Err(err.to_string()),
+                    Ok(res) => {
+                        match res.bytes() {
+                            Ok(b) => Ok(b.to_vec()),
+                            Err(err) => Err(err.to_string())
+                        }
+                    }
+                }
+            }
+        );
 
-        let prom = PromiseResolver::new(scope).unwrap();
         rv.set(prom.into());
-        let g_prom = Global::new(scope, prom);
-
-        let prom_id = Runtime::prom_map_insert(scope, g_prom);
-        let thread = std::thread::spawn(move || {
-            let req = reqwest::blocking::get(url);
-            let v = req.unwrap().text().expect("Output").as_bytes().to_vec();
-
-            tx.send((prom_id, v, TypeId::of::<v8::String>())).expect("Tried to send vec over!");
-        });
     }
 
     // Simple inspector <Not Complete>
@@ -150,6 +159,7 @@ impl AvDebug {
     ) -> String {
         let lvl = level.unwrap_or(0);
         match Self::type_of(value) {
+            "uint8_array" => Colors::BracketMatch(lvl, Self::inspect_uint8_array(scope, value, lvl)).to_string(),
             "array" => Colors::BracketMatch(lvl, format!("[ {} ]", Self::inspect_array(scope, value, lvl))).to_string(),
             "function" => Colors::Special(Self::inspect_function(scope, value)).to_string(),
             "string" => Self::inspect_string(scope, value.into()),
@@ -252,5 +262,18 @@ impl AvDebug {
             true => String::from("Symbol()"),
             false => String::from(format!("Symbol({})", Self::inspect(scope, d, Some(0))))
         };
+    }
+
+    fn inspect_uint8_array(
+        scope : &mut HandleScope,
+        uint8_arr : Local<Value>,
+        lvl: u8
+    ) -> String {
+        let p = &*uint8_arr;
+
+        let arr : &v8::Uint8Array = unsafe {
+            std::mem::transmute::<*const Value, *const v8::Uint8Array>(p).as_ref().unwrap()
+        };
+        return format!("{}({})", Colors::Special("Uint8Array".to_string()).to_string(), arr.byte_length());
     }
 }

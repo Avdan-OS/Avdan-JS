@@ -4,6 +4,7 @@ use std::cell::UnsafeCell;
 use std::collections::HashMap;
 use std::ffi::c_void;
 use std::fs;
+use std::intrinsics::transmute;
 use std::panic;
 use std::rc::Rc;
 use std::sync::Arc;
@@ -30,16 +31,20 @@ use crate::Avdan::loader::Extension;
 
 use super::super::Avdan;
 
-pub mod Task;
+mod task;
+pub use task::{Task, Sink};
+
+pub mod message;
+pub use message::{Message, Type};
 
 const TRANSMISSION_KEY: &str = "___TX___";
 const PROMISE_TABLE: &str = "___PROM___";
 
-type Index = u32; 
+pub type PromIndex = u32; 
 type Prom = Global<PromiseResolver>;
 
-type TaskOut = (Index, Vec<u8>, TypeId);
-type PromTable = HashMap<Index, Prom>;
+type TaskOut = Message;
+type PromTable = HashMap<PromIndex, Prom>;
 
 pub struct Runtime<T> {
     tx: Option<Sender<T>>,
@@ -142,28 +147,48 @@ impl Runtime<TaskOut> {
                 // Run the script to get the result.
                 script.expect("Error in the script!").run(scope).unwrap();
 
-                for (id, contents, out_type) in rx {
-                    println!("⏱️Task finished!");
-                    println!("🤝🆔:\t{:?}", id);
+                for msg in rx {
+                    let id = msg.0;
 
-                    // Get Promise, and resolve it, then remove from the table.
                     let p = map.get(&id).expect("Should have got promise !");
                     let prom = p.open(scope);
 
+                    match msg.1 {
+                        Type::Auxiliary(k, contents, fn_ptr) => {
+                            match Task::get_auxiliary_func(scope, prom, k) {
+                                Some(f) => {
+                                    let obj = fn_ptr(scope, contents);
+                                    let local = unsafe {
+                                        transmute::<&PromiseResolver, Local<PromiseResolver>>(prom)
+                                    };
+                                    f.call(scope, local.into(), &[obj]);
+                                },
+                                None => {}
+                            }
+                        },
+                        Type::Result(contents, out_type) => {
+                            // Get Promise, and resolve it, then remove from the table.
+                           
+
+                            match contents {
+                                Err(txt) => {
+                                    let e = v8::String::new(scope, &txt).unwrap();
+                                    let err = v8::Exception::error(scope, e);
+                                    prom.reject(scope, err.into());
+                                },
+                                Ok(result) => {
+                                    let r_value = task::Task::get_output(scope, result, out_type);
+                                    prom.resolve(scope, r_value);
+                                }
+                            }
+                            map.remove(&id);
+                        }
+                    };
 
 
-                    if out_type == TypeId::of::<v8::String>() {
-                        let s = String::from_utf8(contents).unwrap();
-                        // println!("Value: {}", s);
-                        let st = v8::String::new(scope, s.as_str()).unwrap();
+                    
 
-                        prom.resolve(scope, st.into());
-                    } else {
-                        let u = v8::undefined(scope).into();
-                        prom.resolve(scope, u);
-                    }
 
-                    map.remove(&id);
 
                     if map.len() == 0 {
                         break;
@@ -191,13 +216,13 @@ impl Runtime<TaskOut> {
         unsafe { tx.as_mut() }.expect("Cannot change as mut!").to_owned()
     }
 
-    pub fn prom_map_insert<'a>(scope: &mut HandleScope<'a>, prom: Prom) -> Index {
+    pub fn prom_map_insert<'a>(scope: &mut HandleScope<'a>, prom: Prom) -> PromIndex {
         let key = v8::String::new(scope, PROMISE_TABLE).unwrap();
         let global = scope.get_current_context().global(scope);
 
         let ___tbl : Result<Local<External>, _> = global.get(scope, key.into()).unwrap().try_into();
         let __tbl = ___tbl.expect("Cannot cast prom_tbl into v8::External !");
-        let _tbl = __tbl.value() as *mut HashMap<Index, Prom>;
+        let _tbl = __tbl.value() as *mut HashMap<PromIndex, Prom>;
 
         let tbl = unsafe {_tbl.as_mut()}.expect("Cannot change to mut !");
 
@@ -209,7 +234,6 @@ impl Runtime<TaskOut> {
         }
 
         tbl.insert(i, prom);
-        println!("🤝 Added promise #{:?} to table !", i);
         return i;
     }
 }

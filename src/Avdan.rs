@@ -58,4 +58,4 @@ impl Permission {
     }
 }
 
-pub use runtime::Runtime;
+pub use runtime::{Runtime, PromIndex};

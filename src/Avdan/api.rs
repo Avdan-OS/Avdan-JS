@@ -5,7 +5,7 @@ mod file;
 mod debug;
 mod shell;
 mod pipe;
-
+mod net;
 
 use crate::core::JSApi;
 

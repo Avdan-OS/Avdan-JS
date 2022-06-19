@@ -9,7 +9,7 @@ use v8::{HandleScope, PromiseResolver, Global, Local, Value, Uint8Array, ArrayBu
 
 use crate::core::{def_safe_function, def_safe_property};
 
-use super::{Runtime, message::{Message, Type as MessageType}, PromIndex};
+use super::{Runtime, message::{Message, Type as MessageType}, PromIndex, Builder};
 
 
 const AUX_HANDLERS : &str = "___aux___";
@@ -18,7 +18,7 @@ pub struct Task {}
 type RawOutput = Result<Vec<u8>, String>;
 
 impl Task {
-    pub fn new<'a, F>(scope: &mut HandleScope<'a>, type_id : TypeId, f: F) -> Local<'a, PromiseResolver>
+    pub fn new<'a, F>(scope: &mut HandleScope<'a>, f: F, builder : Builder) -> Local<'a, PromiseResolver>
         where
             F : FnOnce((PromIndex, Sender<Message>)) -> RawOutput + Send + 'static,
         {
@@ -35,7 +35,7 @@ impl Task {
         thread::spawn(move || {
             let tx_client = tx.clone();
             let output = MessageType::Result(
-                f((task_id, tx_client)), type_id
+                f((task_id, tx_client)), builder
             ).message(task_id);
             tx.send(output).expect(format!("[📋 TASK {}] Failed to send its output.", task_id).as_str());
         });
@@ -103,31 +103,23 @@ impl Task {
             }
         }
     }
+}
 
+pub mod output {
+    use v8::{HandleScope, Uint8Array, Value, Local, ArrayBuffer};
 
-    pub fn get_output<'a>(scope: &mut HandleScope<'a>,  vec : Vec<u8>, type_id : TypeId) -> Local<'a, Value> {
-        
-        match type_id {
-            t if t == TypeId::of::<v8::String>() => {
-                v8::String::new(scope, String::from_utf8(vec).unwrap().as_str()).unwrap().into()
-            },
-            t if t == TypeId::of::<v8::Uint8Array>() => {
-                let len = vec.len();
-                let store = ArrayBuffer::new_backing_store_from_boxed_slice(vec.into_boxed_slice());
-                let int_arr = ArrayBuffer::with_backing_store(scope, &store.make_shared());
-                Uint8Array::new(scope, int_arr, 0, len).unwrap().into()
-            },
-            _ => {
-                v8::undefined(scope).into()
-            }
-        }
+    pub fn void<'a>(scope: &mut HandleScope<'a>, vec: Vec<u8>) -> Local<'a, Value> {
+        v8::undefined(scope).into()
     }
 
-}
+    pub fn uint8_array<'a>(scope: &mut HandleScope<'a>, vec: Vec<u8>) -> Local<'a, Value> {
+        let len = vec.len();
+        let store = ArrayBuffer::new_backing_store_from_boxed_slice(vec.into_boxed_slice());
+        let int_arr = ArrayBuffer::with_backing_store(scope, &store.make_shared());
+        Uint8Array::new(scope, int_arr, 0, len).unwrap().into()
+    }
 
-pub mod Type {
-    // Util for returning undefined
-    pub struct Sink {}
+    pub fn string<'a>(scope: &mut HandleScope<'a>, vec : Vec<u8>) -> Local<'a, Value> {
+        v8::String::new(scope, String::from_utf8(vec).unwrap().as_str()).unwrap().into()
+    }
 }
-
-pub use Type::Sink;

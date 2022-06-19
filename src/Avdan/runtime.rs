@@ -2,6 +2,7 @@ use std::any::TypeId;
 use std::cell::RefCell;
 use std::cell::UnsafeCell;
 use std::collections::HashMap;
+use std::env;
 use std::ffi::c_void;
 use std::fs;
 use std::intrinsics::transmute;
@@ -13,29 +14,40 @@ use std::sync::mpsc::Receiver;
 use std::thread;
 use std::thread::JoinHandle;
 use std::sync::mpsc::Sender;
+use std::time::Duration;
 use rand::Rng;
 use v8;
+use v8::CallbackScope;
+use v8::Context;
 use v8::External;
+use v8::FixedArray;
 use v8::Global;
 use v8::HandleScope;
 use v8::Local;
+use v8::Module;
 use v8::Promise;
 use v8::PromiseResolver;
+use v8::ScriptOrigin;
+use v8::TryCatch;
 use v8::Value;
 use v8::inspector::Channel;
 use std::sync::mpsc::channel;
 
+use crate::Avdan::runtime::avmod::AvModule;
+use crate::Avdan::runtime::avmod::ResourceIdentifier;
 use crate::core::def_safe_property;
 use crate::core::JSApi;
 use crate::Avdan::loader::Extension;
 
 use super::super::Avdan;
 
-mod task;
-pub use task::{Task, Sink};
+pub mod task;
+pub use task::{output, Task};
+
+pub mod avmod;
 
 pub mod message;
-pub use message::{Message, Type};
+pub use message::{Message, Type, Builder};
 
 const TRANSMISSION_KEY: &str = "___TX___";
 const PROMISE_TABLE: &str = "___PROM___";
@@ -48,14 +60,12 @@ type PromTable = HashMap<PromIndex, Prom>;
 
 pub struct Runtime<T> {
     tx: Option<Sender<T>>,
-    tasks : Option<PromTable>,
 }
 
 impl Runtime<TaskOut> {
     pub fn new() -> Runtime<TaskOut> {
         Runtime {
             tx : None,
-            tasks : Some(HashMap::new()),
         }
     }
     
@@ -73,7 +83,7 @@ impl Runtime<TaskOut> {
             panic!("Extension path not specified!");
         }
 
-        let extension = Extension::from_manifest(args.get(1).unwrap());
+        let extension = Extension::from_manifest(args.get(1).clone().unwrap());
         
         /*
             Async ????
@@ -121,16 +131,6 @@ impl Runtime<TaskOut> {
 
                 def_safe_property(scope, global, "Avdan", avdan_js.into());
 
-                
-
-                let source_code =
-                    fs::read_to_string(extension.main()).expect("Couldn't read `main` file!");
-
-                // Create a string containing the JavaScript source code.
-                let code = v8::String::new(scope, &source_code).unwrap();
-
-                // Compile the source code.
-                let script = v8::Script::compile(scope, code, None);
 
                 // Put the async sender into the global JS scope. 
                 let tx_ptr : *mut _= & mut tx.clone();
@@ -141,57 +141,77 @@ impl Runtime<TaskOut> {
                 let map_ptr : *mut _ = &mut map;
                 let prom_map = External::new(scope, map_ptr as *mut c_void);
                 def_safe_property(scope, global, PROMISE_TABLE, prom_map.into());
+
+                // {
+                //     // Compile the source code.
                 
+                //     // Check if there was an error in the javascript
+                //     // Run the script to get the result.
+                //     script.expect("Error in the script!").run(scope).unwrap();
+                // }
+                // let script = v8::Script::compile(scope, code, None).expect("Error in script!"); 
 
-                // Check if there was an error in the javascript
-                // Run the script to get the result.
-                script.expect("Error in the script!").run(scope).unwrap();
+               
+                let main_module_path = ResourceIdentifier::FilePath(extension.main().to_string());
+                
+                let main_module = AvModule::new(main_module_path);
+                
+                let mut scope = &mut v8::HandleScope::new(scope);
 
-                for msg in rx {
-                    let id = msg.0;
+                let main_module = main_module.resolve(scope, env::current_dir().unwrap().to_str().unwrap().to_string());
 
-                    let p = map.get(&id).expect("Should have got promise !");
-                    let prom = p.open(scope);
+                println!("{:?}", main_module.unwrap().open(scope).instantiate_module(scope, AvModule::callback));
 
-                    match msg.1 {
-                        Type::Auxiliary(k, contents, fn_ptr) => {
-                            match Task::get_auxiliary_func(scope, prom, k) {
-                                Some(f) => {
-                                    let obj = fn_ptr(scope, contents);
-                                    let local = unsafe {
-                                        transmute::<&PromiseResolver, Local<PromiseResolver>>(prom)
-                                    };
-                                    f.call(scope, local.into(), &[obj]);
-                                },
-                                None => {}
-                            }
-                        },
-                        Type::Result(contents, out_type) => {
-                            // Get Promise, and resolve it, then remove from the table.
-                           
+                thread::sleep(Duration::from_millis(1_000));
 
-                            match contents {
-                                Err(txt) => {
-                                    let e = v8::String::new(scope, &txt).unwrap();
-                                    let err = v8::Exception::error(scope, e);
-                                    prom.reject(scope, err.into());
-                                },
-                                Ok(result) => {
-                                    let r_value = task::Task::get_output(scope, result, out_type);
-                                    prom.resolve(scope, r_value);
+                { 
+                    // Very simplified event loop.
+                    for msg in rx {
+                        let id = msg.0;
+
+                        let p = map.get(&id).expect("Should have got promise !");
+                        let prom = p.open(scope);
+
+                        match msg.1 {
+                            Type::Auxiliary(k, contents, fn_ptr) => {
+                                match Task::get_auxiliary_func(scope, prom, k) {
+                                    Some(f) => {
+                                        let obj = fn_ptr(scope, contents);
+                                        let local = unsafe {
+                                            transmute::<&PromiseResolver, Local<PromiseResolver>>(prom)
+                                        };
+                                        f.call(scope, local.into(), &[obj]);
+                                    },
+                                    None => {}
                                 }
+                            },
+                            Type::Result(contents, builder) => {
+                                // Get Promise, and resolve it, then remove from the table.
+                            
+
+                                match contents {
+                                    Err(txt) => {
+                                        let e = v8::String::new(scope, &txt).unwrap();
+                                        let err = v8::Exception::error(scope, e);
+                                        prom.reject(scope, err.into());
+                                    },
+                                    Ok(result) => {
+                                        let r_value = builder(scope, result);
+                                        prom.resolve(scope, r_value);
+                                    }
+                                }
+                                map.remove(&id);
                             }
-                            map.remove(&id);
+                        };
+
+
+                        
+
+
+
+                        if map.len() == 0 {
+                            break;
                         }
-                    };
-
-
-                    
-
-
-
-                    if map.len() == 0 {
-                        break;
                     }
                 }
             }

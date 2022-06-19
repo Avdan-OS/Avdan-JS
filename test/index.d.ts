@@ -1,8 +1,7 @@
-//// TEST
-
 export interface Task<E extends Task.Event> {
     on<N extends keyof E>(name : N, callback:E[N]) : Task<E>;
 }   
+
 
 
 
@@ -264,8 +263,6 @@ export namespace Avdan {
             formats(): Promise<string[]>;
         }
     }
-
-    
 
     /// RAYCAST
     export namespace Environment {

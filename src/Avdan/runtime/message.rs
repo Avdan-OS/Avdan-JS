@@ -5,15 +5,18 @@ use v8::{HandleScope, Local, Value};
 use super::PromIndex;
 
 
-type Builder = for<'a> fn(&mut HandleScope<'a>, Vec<u8>) -> Local<'a, Value>;
+pub type Builder = for<'a> fn(&mut HandleScope<'a>, Vec<u8>) -> Local<'a, Value>;
 
 #[derive(Clone)]
 pub enum Type {
     // Either Result or Error -- Causes Task to end.
-    Result(Result<Vec<u8>, String>, TypeId),
+    Result(Result<Vec<u8>, String>, Builder),
 
-    // Reserved for later use -- Allows sending of event messages whilst task is in progress.
+    // Allows sending of event messages whilst task is in progress.
     Auxiliary(String, Vec<u8>, Builder)
+    /*
+              Name ^ : Data ^ : Builder ^
+    */
 }
 
 impl Type {

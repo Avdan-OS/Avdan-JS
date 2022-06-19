@@ -1,6 +1,6 @@
 # What is this ?
 
-This repo aims to be a JavaScript environment where AvdanOS Serach extensions can run.
+This repo aims to be a JavaScript environment where AvdanOS extensions can run.
 
 ## Features :
 - API

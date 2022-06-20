@@ -1,6 +1,7 @@
-use std::{collections::HashMap, hash::Hash, path::{Path, PathBuf}, fs, };
+use std::{collections::HashMap, hash::Hash, path::{Path, PathBuf}, fs, thread, time::Duration, };
 
-use v8::{Module, Global, ModuleStatus, TryCatch, HandleScope, ScriptOrigin, script_compiler::Source, Local, Context, FixedArray, CallbackScope, };
+use colored::Colorize;
+use v8::{Module, Global, ModuleStatus, TryCatch, HandleScope, ScriptOrigin, script_compiler::Source, Local, Context, FixedArray, CallbackScope, ModuleRequest, Exception, };
 
 use serde::{Serialize, Deserialize};
 
@@ -29,7 +30,7 @@ impl Package {
     } 
 }
 
-#[derive(PartialEq, Eq, Clone)]
+#[derive(PartialEq, Eq)]
 pub enum ResourceIdentifier {
     FilePath(String), // 
     Internal(String), // 
@@ -54,8 +55,10 @@ impl ResourceIdentifier {
     }
 
     fn resolve_file<'a>(scope : &mut HandleScope<'a>, current_dir: String, file_name: String) -> Result<PathBuf, String> {
+        // TODO: Remove this
         let path = Path::new(current_dir.as_str());
         let path = path.join(file_name);
+        println!("Resolving file {:?}", path.clone());
 
         match path.exists() {
             true => match path {
@@ -159,6 +162,16 @@ impl Into<String> for ResourceIdentifier {
     }
 }
 
+impl Clone for ResourceIdentifier {
+    fn clone(&self) -> Self {
+        match self {
+            Self::FilePath(arg0) => Self::FilePath(arg0.clone()),
+            Self::Internal(arg0) => Self::Internal(arg0.clone()),
+            Self::Package(arg0) => Self::Package(arg0.clone()),
+        }
+    }
+}
+
 impl Hash for ResourceIdentifier {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
         match self {
@@ -174,46 +187,50 @@ type Identifier = ResourceIdentifier;
 
 
 // Stores all modules, and all the information about them.
-pub struct ModuleStore<'a> {
-    status  : HashMap<Identifier, ModuleStatus>,
-    modules : Vec<AvModule<'a>>,
+pub struct ModuleStore {
+    status  : HashMap<String, Global<Module>>,
 }
 
-impl<'a> ModuleStore<'a> {
-    pub fn contains(&self, id: Identifier) -> bool {
-        self.status.contains_key(&id)
+impl ModuleStore {
+    pub fn new() -> ModuleStore {
+        ModuleStore { status: HashMap::new() }
     }
 
-    pub fn update(&mut self, id: Identifier, status : ModuleStatus) -> () {
-        self.status.insert(id, status);
+    pub fn contains(&self, id: &Identifier) -> bool {
+        self.status.contains_key(&id.string_id())
     }
 
-    pub fn add(&mut self, id : Identifier, module: AvModule<'a>, status : ModuleStatus) -> () {
-        match self.contains(id.clone()) {
+
+    pub fn add(&mut self, module: &AvModule,) -> () {
+        println!("#1");
+        match self.contains(&module.identifier) {
             true => return,
             false => {
-                self.modules.push(module);
-                self.status.insert(id.clone(), status);
+                println!("#2");
+                let c = module.identifier.string_id();
+                println!("#3");
+                self.status.insert(c, module.module.as_ref().unwrap().clone());
+                println!("#4");
             }
         }
     }
 
-    pub fn status(&self, id : Identifier) -> &ModuleStatus {
-        self.status.get(&id).unwrap()
-    }
-
 }
 
-pub struct AvModule<'a> {
+pub struct AvModule {
     identifier : Identifier,
-    dependencies: Option<Vec<&'a AvModule<'a>>>,
+    dependencies: Vec<Identifier>,
     module: Option<Global<Module>>
 }
 
-impl<'a> AvModule<'a> {
+impl AvModule {
 
-    pub fn new(id : Identifier) -> AvModule<'a> {
-        AvModule { identifier: id, dependencies: None, module: None }
+    pub fn new(id : Identifier) -> AvModule {
+        AvModule { identifier: id, dependencies: vec![], module: None }
+    }
+
+    pub fn add_dependency(&mut self, module : Identifier) -> () {
+        self.dependencies.push(module);
     }
 
     pub fn default_origin<'s>(scope: &mut HandleScope<'s>, name: String) -> ScriptOrigin<'s> {
@@ -233,14 +250,16 @@ impl<'a> AvModule<'a> {
     }
 
     pub fn independent(&self) -> bool {
-        self.dependencies.as_ref().unwrap().is_empty() 
+        self.dependencies.is_empty() 
     }
 
-    pub fn resolve(&self, scope : &mut HandleScope, current_dir: String) -> Result<Global<Module>, String> {
-        let path_to_main = self.identifier.resolve(scope, current_dir)?;
+    pub fn resolve(&mut self, scope : &mut HandleScope, current_dir: String) -> Result<Global<Module>, String> {
+        println!("{}", Colorize::blue("AvModule::resolve\n"));
+        let path_to_module = self.identifier.resolve(scope, current_dir.clone())?;
+        println!("Resolving module with path: {:?}", path_to_module);
         let origin = Self::default_origin(scope, self.identifier.clone().into());
 
-        let source_code = fs::read_to_string(path_to_main);
+        let source_code = fs::read_to_string(path_to_module.clone());
         if source_code.is_err() {
             return Err(source_code.err().unwrap().to_string());
         } 
@@ -249,7 +268,7 @@ impl<'a> AvModule<'a> {
 
         let code = Source::new(source_code, Some(&origin));
 
-        let mut try_catch = &mut TryCatch::new(scope);
+        let try_catch = &mut TryCatch::new(scope);
 
         let module = v8::script_compiler::compile_module(try_catch, code);
 
@@ -259,7 +278,60 @@ impl<'a> AvModule<'a> {
         }
 
         let module = module.unwrap();
+
         let global_module = Global::new(try_catch, module);
+
+        let store = try_catch.get_slot_mut::<ModuleStore>().unwrap();
+
+        self.module = Some(global_module.clone());
+        store.add(&*self);
+       
+
+        println!("Added to store! {}", store.status.len());
+
+
+        let module_requests = module.get_module_requests();
+        let reqs : Vec<ModuleRequest> = vec![];
+
+
+        // Loop through the `import` statements.
+        for i in 0..module_requests.length() {
+            let req : Local<ModuleRequest> = module_requests.get(try_catch, i).unwrap().try_into().unwrap();
+
+            let import_specifier = req.get_specifier().to_rust_string_lossy(try_catch);
+
+            println!("Importing : {}\n", import_specifier);
+            
+            let import_specifier = ResourceIdentifier::from(import_specifier);
+            let mut dep_module = AvModule::new(
+                import_specifier.clone()
+            );
+
+            let m = dep_module.resolve(try_catch, path_to_module.clone().parent().unwrap().to_str().unwrap().into()).unwrap();
+
+            self.add_dependency(import_specifier);
+        
+        }
+
+        println!("Dependencies : {:?}", self.dependencies.len());
+
+        
+        // Todo: Wait for module requests.
+
+        match module.instantiate_module(try_catch, AvModule::callback) {
+            None => {
+                let excep = try_catch.exception().unwrap();
+                panic!("\n\t{}\n", Colorize::red(excep.to_rust_string_lossy(try_catch).as_str()));
+            },
+            Some(_) => ()
+        };
+
+        
+
+
+        
+
+
         Ok(global_module)
     }
 
@@ -268,9 +340,7 @@ impl<'a> AvModule<'a> {
             CallbackScope::new(context)
         };
 
-        println!("Module: {}.\nHas been instantiated!", specifier.to_rust_string_lossy(scope));
-
-        
+        println!("Module: {}.\nHas been instantiated!\n", specifier.to_rust_string_lossy(scope));
 
         Some(referrer)
     }

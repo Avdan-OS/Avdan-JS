@@ -2,6 +2,15 @@ use std::{ffi::c_void, mem};
 use serde::{Serialize, Deserialize};
 
 use super::Permission;
+
+///
+/// ## Security::Constraints
+/// 
+/// Handles various security contraints of AvdanOS Search extensions, such as:
+/// * Shell command declararion.
+/// * AvdanOS API access. 
+/// 
+///
 #[derive(Clone, Serialize, Deserialize)]
 pub struct Constraints {
     permissions : Vec<String>,
@@ -10,24 +19,14 @@ pub struct Constraints {
 
 const SECURITY_KEY : &str = "___SECURITY___";
 
-/**
- * Security::Constraints
- * 
- * Handles various security contraints of AvdanOS Search extensions, such as:
- *      *    Shell command declararion.
- *      *    AvdanOS API access. 
- * 
- */
+
 impl Constraints {
-    /** "CONSTRUCTOR" */
     pub fn new<'a>(permissions : Vec<&'a str>, external_commands: Vec<&'a str>) -> Constraints {
         Constraints { 
             permissions: permissions.iter().map(|p| p.to_string()).collect(),
             commands: external_commands.iter().map(|p| p.to_string()).collect()
         }
     }
-
-    /** METHODS */
 
     pub fn permissions(&self) -> &Vec<String> {
         return &self.permissions;

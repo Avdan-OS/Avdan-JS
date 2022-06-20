@@ -11,13 +11,11 @@ This repo aims to be a JavaScript environment where AvdanOS extensions can run.
 
 ## Try it out
 
-1. Clone this repo.
+1. 🧑‍💻 `git clone` this repo.
 
-2. Run `cargo build && ./target/debug/proj ./test` to run a rudimentary sample extension,
-then paste the contents of the clipboard.
+2. 🔨 Run `cargo build && ./target/debug/proj ./test/clipboard` to run a rudimentary sample extension.
 
-
-
+3. 📋 Paste the contents of your clipboard.
 
 
 ## Security Policy
@@ -35,14 +33,14 @@ avdan
 │   
 ├───clipboard
 │   │   
-│   │   read    --- Reading of the contents of any clipboard.
-│   │   write   --- Modifying/Writing to the contents of any clipboard.
-│   │   type    --- Sending keystrokes.
+│   ├--- read    --- Reading of the contents of any clipboard.
+│   ├--- write   --- Modifying/Writing to the contents of any clipboard.
+│   ├--- type    --- Sending keystrokes.
 │
 ├───file
 │   │   
-│   │   read    --- Reading from a file.
-│   │   write   --- Writing to a file.
+│   ├--- read    --- Reading from a file.
+│   ├--- write   --- Writing to a file.
 ```
 
 ## Core Avdan API dependencies

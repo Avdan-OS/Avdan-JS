@@ -1,0 +1,17 @@
+{
+    "name": "example-search-extension",
+    "version": "0.0.1",
+    "description": "",
+    "author": "Sammy99jsp",
+    "main": "./Main.js",
+    "security": {
+        "permissions": [
+            "avdan.clipboard.*",
+            "avdan.file.*",
+            "avdan.shell.*"
+        ],
+        "commands" : [
+            "youtube-dl"
+        ]
+    }
+}

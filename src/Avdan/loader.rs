@@ -32,6 +32,17 @@ impl Extension {
     }
 
 
+    ///
+    /// Parse a `manifest.avdan.json` file into an [`Extension`] struct.
+    /// * `path` - Extension's root directory
+    /// 
+    /// ## Example
+    /// 
+    /// ```
+    /// let extension = Extension::from_manifest("./test");
+    /// todo!() // Do stuff with the Extension struct
+    /// ```
+    /// 
     pub fn from_manifest(path: &str) -> Extension {
         if !Self::is_folder(path) {
             panic!("Must provide folder!");
@@ -44,6 +55,13 @@ impl Extension {
         return e;
     }
 
+    ///
+    /// Returns the extension's main file 
+    /// ```
+    /// let extension = Extension::from_manifest("./test");
+    /// extension.main()
+    /// ```
+    /// 
     pub fn main(&self) -> &String {
         return &self.main;
     }

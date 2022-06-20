@@ -1,3 +1,5 @@
+use colored::Colorize;
+use rand::Rng;
 use std::any::TypeId;
 use std::cell::RefCell;
 use std::cell::UnsafeCell;
@@ -8,15 +10,16 @@ use std::fs;
 use std::intrinsics::transmute;
 use std::panic;
 use std::rc::Rc;
+use std::sync::mpsc::channel;
+use std::sync::mpsc::Receiver;
+use std::sync::mpsc::Sender;
 use std::sync::Arc;
 use std::sync::Mutex;
-use std::sync::mpsc::Receiver;
 use std::thread;
 use std::thread::JoinHandle;
-use std::sync::mpsc::Sender;
 use std::time::Duration;
-use rand::Rng;
 use v8;
+use v8::inspector::Channel;
 use v8::CallbackScope;
 use v8::Context;
 use v8::External;
@@ -30,14 +33,13 @@ use v8::PromiseResolver;
 use v8::ScriptOrigin;
 use v8::TryCatch;
 use v8::Value;
-use v8::inspector::Channel;
-use std::sync::mpsc::channel;
 
-use crate::Avdan::runtime::avmod::AvModule;
-use crate::Avdan::runtime::avmod::ResourceIdentifier;
+use crate::Avdan::runtime::avmod::ModuleStore;
 use crate::core::def_safe_property;
 use crate::core::JSApi;
 use crate::Avdan::loader::Extension;
+use crate::Avdan::runtime::avmod::AvModule;
+use crate::Avdan::runtime::avmod::ResourceIdentifier;
 
 use super::super::Avdan;
 
@@ -47,12 +49,12 @@ pub use task::{output, Task};
 pub mod avmod;
 
 pub mod message;
-pub use message::{Message, Type, Builder};
+pub use message::{Builder, Message, Type};
 
 const TRANSMISSION_KEY: &str = "___TX___";
 const PROMISE_TABLE: &str = "___PROM___";
 
-pub type PromIndex = u32; 
+pub type PromIndex = u32;
 type Prom = Global<PromiseResolver>;
 
 type TaskOut = Message;
@@ -64,11 +66,9 @@ pub struct Runtime<T> {
 
 impl Runtime<TaskOut> {
     pub fn new() -> Runtime<TaskOut> {
-        Runtime {
-            tx : None,
-        }
+        Runtime { tx: None }
     }
-    
+
     pub fn tx(&self) -> Sender<TaskOut> {
         self.tx.as_ref().expect("Err: tx is None!").clone()
     }
@@ -83,8 +83,13 @@ impl Runtime<TaskOut> {
             panic!("Extension path not specified!");
         }
 
+        let experiental_module_flag = match args.get(2) {
+            Some(f) => f.eq("--module"),
+            None => false,
+        };
+
         let extension = Extension::from_manifest(args.get(1).clone().unwrap());
-        
+
         /*
             Async ????
         */
@@ -93,9 +98,8 @@ impl Runtime<TaskOut> {
 
         self.tx = tx.clone().into();
 
-        
         thread::spawn(move || {
-            let mut map : PromTable = HashMap::new();
+            let mut map: PromTable = HashMap::new();
             /*
              * V8 JavaScript (ECMAScript) Engine
              */
@@ -120,9 +124,9 @@ impl Runtime<TaskOut> {
                 let global = context.global(scope);
 
                 /*
-                *     Security Policy
-                * 🚧 UNDER CONSTRUCTION 🚧
-                */
+                 *     Security Policy
+                 * 🚧 UNDER CONSTRUCTION 🚧
+                 */
 
                 // Apply security policy
                 extension.security().into_scope(scope);
@@ -131,42 +135,61 @@ impl Runtime<TaskOut> {
 
                 def_safe_property(scope, global, "Avdan", avdan_js.into());
 
-
-                // Put the async sender into the global JS scope. 
-                let tx_ptr : *mut _= & mut tx.clone();
+                // TODO: Move this
+                // {
+                // Put the async sender into the global JS scope.
+                let tx_ptr: *mut _ = &mut tx.clone();
                 let transmission = v8::External::new(scope, tx_ptr as *mut c_void);
                 def_safe_property(scope, global, TRANSMISSION_KEY, transmission.into());
 
                 // Put the promise map into the JS global scope.
-                let map_ptr : *mut _ = &mut map;
+                let map_ptr: *mut _ = &mut map;
                 let prom_map = External::new(scope, map_ptr as *mut c_void);
                 def_safe_property(scope, global, PROMISE_TABLE, prom_map.into());
-
-                // {
-                //     // Compile the source code.
-                
-                //     // Check if there was an error in the javascript
-                //     // Run the script to get the result.
-                //     script.expect("Error in the script!").run(scope).unwrap();
                 // }
-                // let script = v8::Script::compile(scope, code, None).expect("Error in script!"); 
 
-               
-                let main_module_path = ResourceIdentifier::FilePath(extension.main().to_string());
-                
-                let main_module = AvModule::new(main_module_path);
-                
-                let mut scope = &mut v8::HandleScope::new(scope);
+                if experiental_module_flag {
+                    scope.set_slot(ModuleStore::new());
+                    let exp_warning_message = Colorize::yellow("Warning! --module is an experimental flag!\n");
+                    
+                    
+                    println!("{}\n Do not expect anything to work !", exp_warning_message);
+                    let main_module_path =
+                        ResourceIdentifier::FilePath(extension.main().to_string());
 
-                let main_module = main_module.resolve(scope, env::current_dir().unwrap().to_str().unwrap().to_string());
+                    let mut main_module = AvModule::new(main_module_path);
 
-                println!("{:?}", main_module.unwrap().open(scope).instantiate_module(scope, AvModule::callback));
+                    let scope = &mut v8::HandleScope::new(scope);
 
-                thread::sleep(Duration::from_millis(1_000));
 
-                { 
-                    // Very simplified event loop.
+
+                    let main_module = main_module.resolve(
+                        scope,
+                        env::current_dir().unwrap().to_str().unwrap().to_string(),
+                    ).unwrap();
+
+                    let main = main_module
+                        .open(scope);
+                    
+
+                    main.evaluate(scope).unwrap();
+
+
+                    // Check if there was an error in the javascript
+                    // Run the script to get the result.
+                } else {
+                    // Compile the source code.
+                    let source_code = fs::read_to_string(extension.main()).unwrap();
+                    let source_code = v8::String::new(scope, &source_code).unwrap();
+                    let script = v8::Script::compile(scope, source_code, None);
+
+                    script.expect("Error in the script!").run(scope).unwrap();
+                }
+
+                if map.len() != 0 {
                     for msg in rx {
+                        // Very simplified event loop.
+
                         let id = msg.0;
 
                         let p = map.get(&id).expect("Should have got promise !");
@@ -178,23 +201,23 @@ impl Runtime<TaskOut> {
                                     Some(f) => {
                                         let obj = fn_ptr(scope, contents);
                                         let local = unsafe {
-                                            transmute::<&PromiseResolver, Local<PromiseResolver>>(prom)
+                                            transmute::<&PromiseResolver, Local<PromiseResolver>>(
+                                                prom,
+                                            )
                                         };
                                         f.call(scope, local.into(), &[obj]);
-                                    },
+                                    }
                                     None => {}
                                 }
-                            },
+                            }
                             Type::Result(contents, builder) => {
                                 // Get Promise, and resolve it, then remove from the table.
-                            
-
                                 match contents {
                                     Err(txt) => {
                                         let e = v8::String::new(scope, &txt).unwrap();
                                         let err = v8::Exception::error(scope, e);
                                         prom.reject(scope, err.into());
-                                    },
+                                    }
                                     Ok(result) => {
                                         let r_value = builder(scope, result);
                                         prom.resolve(scope, r_value);
@@ -203,11 +226,6 @@ impl Runtime<TaskOut> {
                                 map.remove(&id);
                             }
                         };
-
-
-                        
-
-
 
                         if map.len() == 0 {
                             break;
@@ -219,32 +237,34 @@ impl Runtime<TaskOut> {
             unsafe {
                 v8::V8::dispose();
             }
-    
+
             v8::V8::dispose_platform();
         })
     }
 
     pub fn tx_from_scope<'a>(scope: &mut HandleScope<'a>) -> Sender<TaskOut> {
-        let key =  v8::String::new(scope, TRANSMISSION_KEY).unwrap();
+        let key = v8::String::new(scope, TRANSMISSION_KEY).unwrap();
         let global = scope.get_current_context().global(scope);
 
-        let __tx : Result<Local<External>, _> = global.get(scope, key.into()).unwrap().try_into();
+        let __tx: Result<Local<External>, _> = global.get(scope, key.into()).unwrap().try_into();
         let _tx = __tx.expect("Cannot cast tx into v8::External !");
 
         let tx = _tx.value() as *mut Sender<TaskOut>;
 
-        unsafe { tx.as_mut() }.expect("Cannot change as mut!").to_owned()
+        unsafe { tx.as_mut() }
+            .expect("Cannot change as mut!")
+            .to_owned()
     }
 
     pub fn prom_map_insert<'a>(scope: &mut HandleScope<'a>, prom: Prom) -> PromIndex {
         let key = v8::String::new(scope, PROMISE_TABLE).unwrap();
         let global = scope.get_current_context().global(scope);
 
-        let ___tbl : Result<Local<External>, _> = global.get(scope, key.into()).unwrap().try_into();
+        let ___tbl: Result<Local<External>, _> = global.get(scope, key.into()).unwrap().try_into();
         let __tbl = ___tbl.expect("Cannot cast prom_tbl into v8::External !");
         let _tbl = __tbl.value() as *mut HashMap<PromIndex, Prom>;
 
-        let tbl = unsafe {_tbl.as_mut()}.expect("Cannot change to mut !");
+        let tbl = unsafe { _tbl.as_mut() }.expect("Cannot change to mut !");
 
         let mut rng = rand::thread_rng();
         let mut i = 0u32;

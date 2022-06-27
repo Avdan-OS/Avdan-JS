@@ -2,7 +2,7 @@ use v8::{HandleScope, Local, Object,};
 
 mod clipboard;
 mod file;
-mod debug;
+pub mod debug;
 mod shell;
 mod pipe;
 mod net;

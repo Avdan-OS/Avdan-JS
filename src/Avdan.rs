@@ -30,6 +30,8 @@ pub mod loader;
 mod runtime;
 pub mod api;
 
+pub mod utils;
+
 pub struct Permission {
     contents: String,
 }

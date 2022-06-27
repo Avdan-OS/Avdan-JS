@@ -1,11 +1,12 @@
 // import Clipboard from "@avdan/clipboard";
-import {helloWorld} from "./test.mjs";
+// import * as test from "./test.mjs";
+import test2 from "./test_module.mjs";
 
-Avdan.Debug.log(A());
 
-await Avdan.Debug.wait(10, 1_000)
+await Avdan.Debug.wait(100, 60_00)
     .on("tick", tick => {
-        Avdan.Debug.log(`Tick #${tick.tick} !`);
+        // Avdan.Debug.log(`Tick #${tick.tick}`);
+        Avdan.Debug.log(test2);
     })
 
 export {};

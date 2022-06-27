@@ -9,6 +9,8 @@ use std::ffi::c_void;
 use std::fs;
 use std::intrinsics::transmute;
 use std::panic;
+use std::path::Path;
+use std::path::PathBuf;
 use std::rc::Rc;
 use std::sync::mpsc::channel;
 use std::sync::mpsc::Receiver;
@@ -34,12 +36,11 @@ use v8::ScriptOrigin;
 use v8::TryCatch;
 use v8::Value;
 
-use crate::Avdan::runtime::avmod::ModuleStore;
+use crate::Avdan::runtime::avmod::AvModJS;
+use crate::Avdan::runtime::avmod::AvModProvider;
 use crate::core::def_safe_property;
 use crate::core::JSApi;
 use crate::Avdan::loader::Extension;
-use crate::Avdan::runtime::avmod::AvModule;
-use crate::Avdan::runtime::avmod::ResourceIdentifier;
 
 use super::super::Avdan;
 
@@ -104,11 +105,13 @@ impl Runtime<TaskOut> {
              * V8 JavaScript (ECMAScript) Engine
              */
             let platform = v8::new_default_platform(0, false).make_shared();
+            v8::V8::set_flags_from_string("--harmony-import-assertions");
             v8::V8::initialize_platform(platform);
             v8::V8::initialize();
 
             {
                 // Create a new Isolate and make it the current one.
+
                 let isolate = &mut v8::Isolate::new(v8::CreateParams::default());
 
                 // Create a stack-allocated handle scope.
@@ -149,30 +152,42 @@ impl Runtime<TaskOut> {
                 // }
 
                 if experiental_module_flag {
-                    scope.set_slot(ModuleStore::new());
                     let exp_warning_message = Colorize::yellow("Warning! --module is an experimental flag!\n");
                     
-                    
                     println!("{}\n Do not expect anything to work !", exp_warning_message);
-                    let main_module_path =
-                        ResourceIdentifier::FilePath(extension.main().to_string());
+    
 
-                    let mut main_module = AvModule::new(main_module_path);
-
+                        
                     let scope = &mut v8::HandleScope::new(scope);
+                    let try_catch = &mut TryCatch::new(scope);
+
+                    let main_module_path = Path::new(extension.main());
+                    let main_module = AvModJS::load_module(
+                        try_catch,
+                        &main_module_path.canonicalize().unwrap()
+                    );
+
+                    let main = match main_module {
+                        Ok(module) => module,
+                        Err(err) => panic!("\n\n\t{}:\n\t\t{}\n\n", "Error".bright_red(), err)
+                    };
+
+                    let m = main.open(try_catch);
+                    
+                    let a = m.evaluate(try_catch).unwrap();
 
 
 
-                    let main_module = main_module.resolve(
-                        scope,
-                        env::current_dir().unwrap().to_str().unwrap().to_string(),
-                    ).unwrap();
+                    // let main_module = main_module.resolve(
+                    //     scope,
+                    //     env::current_dir().unwrap().to_str().unwrap().to_string(),
+                    // ).unwrap();
 
-                    let main = main_module
-                        .open(scope);
+                    // let main = main_module
+                    //     .open(scope);
                     
 
-                    main.evaluate(scope).unwrap();
+                    // main.evaluate(scope).unwrap();
 
 
                     // Check if there was an error in the javascript

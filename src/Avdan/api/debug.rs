@@ -151,7 +151,7 @@ impl AvDebug {
     // }
 
     // Simple inspector <Not Complete>
-    fn inspect(scope: &mut HandleScope, value: Local<Value>, level: Option<u8>) -> String {
+    pub fn inspect(scope: &mut HandleScope, value: Local<Value>, level: Option<u8>) -> String {
         let lvl = level.unwrap_or(0);
         match Self::type_of(value) {
             "uint8_array" => {
@@ -222,7 +222,7 @@ impl AvDebug {
         );
     }
 
-    fn inspect_object(scope: &mut HandleScope, object: Local<Value>, lvl: u8) -> String {
+    pub(crate) fn inspect_object(scope: &mut HandleScope, object: Local<Value>, lvl: u8) -> String {
         let p = &*object;
 
         let obj: &v8::Object = unsafe {

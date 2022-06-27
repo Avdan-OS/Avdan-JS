@@ -1,11 +1,11 @@
-use std::path::PathBuf;
+use std::{path::PathBuf, sync::mpsc::channel};
 
 use colored::Colorize;
 use v8::{TryCatch, HandleScope, Global, Module, ScriptOrigin, script_compiler::Source, CallbackScope, ModuleRequest, Value, ModuleStatus, Promise, Local, PromiseState};
 
-use crate::Avdan::{utils, api::debug::AvDebug};
+use crate::Avdan::{utils, api::debug::AvDebug, runtime::avmod::AvModStore};
 
-use super::{AvModProvider, AvMod, Resource};
+use super::{AvModProvider, AvMod, Specifier};
 
 pub struct AvModJS {}
 
@@ -55,40 +55,23 @@ impl AvModProvider for AvModJS {
         println!("");
         println!("[{1}] {0}:", format!("Imports ({})", module.get_module_requests().length()).to_string().blue(), path.file_name().unwrap().to_str().unwrap().to_string().yellow());
 
-
         for import in utils::fixed_array_to_vec::<ModuleRequest>(scope, module.get_module_requests()) {
             let name = import.get_specifier();
             
-            let res : Resource = match name.to_rust_string_lossy(scope).try_into() {
+            let res : Specifier = match name.to_rust_string_lossy(scope).try_into() {
                 Ok(v) => v,
                 Err(err) => panic!("{}", err)
             };   
             println!("   {}\t{}", Colorize::bright_red("*").bold(), res);
 
-            let dependency = match res {
-                Resource::File(file) => AvMod::load_from_file(scope, &path.parent().unwrap().canonicalize().unwrap(), file)?,
-                Resource::Module(_) => todo!(),
-                Resource::Internal(_) => todo!(),
-            };
+            let dependency = AvMod::load(
+                scope,
+                &path.parent().unwrap().canonicalize().unwrap(), res.clone())?;
 
-            {
-                let dep= dependency.open(scope);
-                let prom : Local<Promise> = match dep.evaluate(scope){
-                    None => {
-                        let excep = scope.exception().unwrap();
-                        panic!("Error from JS:\n\t{}", excep.to_rust_string_lossy(scope).bright_red());
-                    },
-                    Some(p) => p.try_into().unwrap()
-                };
 
-                while prom.state() != PromiseState::Fulfilled {
-                    println!("Waiting!");
-                }
-            }
-
-            while dependency.open(scope).get_status() != ModuleStatus::Evaluated {
-                println!("Waiting!");
-            }
+            
+            let store  =scope.get_slot_mut::<AvModStore>().unwrap();
+            store.register(res, dependency);
         }
         println!("");
 
@@ -106,7 +89,6 @@ impl AvModProvider for AvModJS {
         };
 
 
-        println!("{:?}", module.get_status());
         Ok(Global::new(scope, module))
     }
 
@@ -119,12 +101,22 @@ impl AvModProvider for AvModJS {
         let scope = &mut unsafe {
             CallbackScope::new(context)
         };
+
         println!("[{}] {}", specifier.to_rust_string_lossy(scope).yellow(), Colorize::blue("Callback from instantiation"), );
-
-        println!("[{}] Import assertions: {}", specifier.to_rust_string_lossy(scope).yellow(), import_assertions.length());
-
         
+        println!("[{}] Import assertions: {}", specifier.to_rust_string_lossy(scope).yellow(), import_assertions.length());
+        
+        let res : Specifier = specifier.to_rust_string_lossy(scope).try_into().unwrap();
+        let store  =scope.get_slot_mut::<AvModStore>().unwrap();
+        
+        let sender = store.get_sender(&dependent.script_id().unwrap());
+        let dependency = store.get(&res).expect("Could not find loaded module (!)");
 
-        Some(dependent)
+
+        let s = &mut unsafe {
+            CallbackScope::new(context)
+        };
+        
+        Some(Local::new(s, dependency))
     }
 }

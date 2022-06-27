@@ -54,12 +54,14 @@ impl AvDebug {
     fn type_of(value: v8::Local<v8::Value>) -> &str {
         match value {
             v if v.is_string() => "string",
+            v if v.is_promise() => "promise",
             v if v.is_function() => "function",
             v if v.is_number() => "number",
             v if v.is_array() => "array",
             v if v.is_symbol() => "symbol",
             v if v.is_object() => "object",
             v if v.is_uint8_array() => "uint8_array",
+
             _ => "unknown",
         }
     }
@@ -154,6 +156,7 @@ impl AvDebug {
     pub fn inspect(scope: &mut HandleScope, value: Local<Value>, level: Option<u8>) -> String {
         let lvl = level.unwrap_or(0);
         match Self::type_of(value) {
+            "promise" => Colors::Special("Promise".to_string()).to_string(), 
             "uint8_array" => {
                 Colors::BracketMatch(lvl, Self::inspect_uint8_array(scope, value, lvl)).to_string()
             }

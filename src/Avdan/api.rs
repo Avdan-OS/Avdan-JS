@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use v8::{HandleScope, Local, Object,};
 
 mod clipboard;
@@ -30,6 +32,15 @@ impl AvdanAPI {
         Self::assign_mod_to_obj(scope, obj, "File", &AvFile {});
         Self::assign_mod_to_obj(scope, obj, "Debug", &AvDebug {});
         Self::assign_mod_to_obj(scope, obj, "Shell", &AvShell {});
+    }
+
+    pub fn public_apis<'a>() -> HashMap<&'static str, Box<dyn JSApi>> {
+        let mut h : HashMap<_, Box<dyn JSApi>> = HashMap::new();
+        h.insert("clipboard", Box::new(AvClipboard{}));
+        h.insert("file", Box::new(AvFile {}));
+        h.insert("debug", Box::new(AvDebug {}));
+        h.insert("shell", Box::new(AvShell {}));
+        h
     }
 }
 

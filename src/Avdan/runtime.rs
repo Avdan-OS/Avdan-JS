@@ -38,6 +38,7 @@ use v8::Value;
 
 use crate::Avdan::runtime::avmod::AvModJS;
 use crate::Avdan::runtime::avmod::AvModProvider;
+use crate::Avdan::runtime::avmod::AvModStore;
 use crate::core::def_safe_property;
 use crate::core::JSApi;
 use crate::Avdan::loader::Extension;
@@ -156,10 +157,10 @@ impl Runtime<TaskOut> {
                     
                     println!("{}\n Do not expect anything to work !", exp_warning_message);
     
-
-                        
+                    
                     let scope = &mut v8::HandleScope::new(scope);
                     let try_catch = &mut TryCatch::new(scope);
+                    AvModStore::into_scope(try_catch);
 
                     let main_module_path = Path::new(extension.main());
                     let main_module = AvModJS::load_module(

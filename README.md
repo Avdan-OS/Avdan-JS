@@ -3,6 +3,8 @@
 This repo aims to be a JavaScript environment where AvdanOS extensions can run.
 
 ## Features :
+- ES Module Support ✅
+- External Modules ⏲️ 
 - API
     - OS Integration
         - Clipboard Access ✅
@@ -13,10 +15,13 @@ This repo aims to be a JavaScript environment where AvdanOS extensions can run.
 
 1. 🧑‍💻 `git clone` this repo.
 
+### Traditional Script
 2. 🔨 Run `cargo build && ./target/debug/proj ./test/clipboard` to run a rudimentary sample extension.
 
 3. 📋 Paste the contents of your clipboard.
 
+### ES Module
+2. 🔨 Run `cargo build && ./target/debug/proj ./test/module1` to run a rudimentary sample extension.
 
 ## Security Policy
 

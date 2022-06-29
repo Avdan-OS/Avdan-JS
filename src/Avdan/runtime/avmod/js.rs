@@ -49,11 +49,22 @@ impl AvModProvider for AvModJS {
         );
 
         let source_code = Source::new(source_text, Some(&origin));
-        let module= v8::script_compiler::compile_module(scope, source_code).unwrap();
+        let module= match v8::script_compiler::compile_module(scope, source_code) {
+            Some(s) => s,
+            None => {
+                let err = scope.exception().unwrap();
+                let err = err.to_rust_string_lossy(scope);
+                panic!("\n\t{} `{}`.\n\t{}", 
+                    "Error compiling JavaScript in file".bright_red(), 
+                    path.to_str().unwrap().yellow(),
+                    err.bright_red()
+                );
+            }
+        };
 
 
-        println!("");
-        println!("[{1}] {0}:", format!("Imports ({})", module.get_module_requests().length()).to_string().blue(), path.file_name().unwrap().to_str().unwrap().to_string().yellow());
+        // println!("");
+        // println!("[{1}] {0}:", format!("Imports ({})", module.get_module_requests().length()).to_string().blue(), path.file_name().unwrap().to_str().unwrap().to_string().yellow());
 
         for import in utils::fixed_array_to_vec::<ModuleRequest>(scope, module.get_module_requests()) {
             let name = import.get_specifier();
@@ -62,7 +73,7 @@ impl AvModProvider for AvModJS {
                 Ok(v) => v,
                 Err(err) => panic!("{}", err)
             };   
-            println!("   {}\t{}", Colorize::bright_red("*").bold(), res);
+            // println!("   {}\t{}", Colorize::bright_red("*").bold(), res);
 
             let dependency = AvMod::load(
                 scope,
@@ -73,7 +84,7 @@ impl AvModProvider for AvModJS {
             let store  =scope.get_slot_mut::<AvModStore>().unwrap();
             store.register(res, dependency);
         }
-        println!("");
+        // println!("");
 
 
         match module.instantiate_module(
@@ -102,9 +113,9 @@ impl AvModProvider for AvModJS {
             CallbackScope::new(context)
         };
 
-        println!("[{}] {}", specifier.to_rust_string_lossy(scope).yellow(), Colorize::blue("Callback from instantiation"), );
+        // println!("[{}] {}", specifier.to_rust_string_lossy(scope).yellow(), Colorize::blue("Callback from instantiation"), );
         
-        println!("[{}] Import assertions: {}", specifier.to_rust_string_lossy(scope).yellow(), import_assertions.length());
+        // println!("[{}] Import assertions: {}", specifier.to_rust_string_lossy(scope).yellow(), import_assertions.length());
         
         let res : Specifier = specifier.to_rust_string_lossy(scope).try_into().unwrap();
         let store  =scope.get_slot_mut::<AvModStore>().unwrap();

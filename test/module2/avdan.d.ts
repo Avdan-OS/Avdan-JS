@@ -1,4 +1,21 @@
-declare module '@avdan' {}
+declare module '@avdan' {
+    export interface Task<R, E extends Task.Event> extends Promise<R> {
+        on<N extends keyof E>(name : N, callback:E[N]) : Task<E>;
+    }   
+    export namespace Task {
+    
+        export interface Event {
+            [name: string] : (...args : any[]) => void;
+        }
+    
+        export namespace Event {
+            export namespace Type {
+                export interface Progressable extends Event { "progress": (percent : number, [completed, total] : [number, number]) => void }
+                export interface Milestone<K extends string[]> extends Event { "milestone" : (stage : K[number]) => void }
+            }
+        }
+    }
+}
 
 /**
  * Avdan Clipboard API 
@@ -121,9 +138,21 @@ declare module '@avdan/file' {
 }
 
 declare module '@avdan/debug' {
+    import {Task} from "@avdan";
     export interface Debug {
         log(...msg : any[]) : void;
+        
+        /** 
+         * @param ticks Number of total ticks.
+         * @param time Time of each tick in miliseconds.
+        */
+        wait(ticks: number, time: number): Task<void, {
+            "tick": (tick: {tick : number}) => void
+        }>;
     }
+
+    const contents : Debug;
+    export default contents;
 }
 
 declare module '*.json' {

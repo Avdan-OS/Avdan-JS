@@ -48,7 +48,7 @@ impl AvModInternal {
                     Some(r) => Ok(Global::new(scope, module))
                 }
             },
-            None => Err(format!("{} '{}' {}", "Module".bright_red(), name.as_str().yellow(), "not found!".bright_red()))
+            None => Err(format!("{}{} {}", "internal module @avdan/".bright_red(), name.as_str().yellow(), "not found!".bright_red()))
         }
     }
 

@@ -1,0 +1,16 @@
+{
+    "compilerOptions": {
+        "target": "ES2017",
+        "lib": ["ES2020"],
+        "checkJs": true,
+        "outDir": "dist",
+        "module": "ES2022",
+        "strict": true,
+        "esModuleInterop": true,
+        "forceConsistentCasingInFileNames": true,
+        "experimentalDecorators": true,
+    },
+    "include": [
+        "./"
+    ]
+}

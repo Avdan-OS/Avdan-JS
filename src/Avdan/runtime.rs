@@ -1,5 +1,6 @@
 use colored::Colorize;
 use rand::Rng;
+use v8::PromiseRejectMessage;
 use std::any::TypeId;
 use std::cell::RefCell;
 use std::cell::UnsafeCell;
@@ -11,6 +12,7 @@ use std::intrinsics::transmute;
 use std::panic;
 use std::path::Path;
 use std::path::PathBuf;
+use std::process::exit;
 use std::rc::Rc;
 use std::sync::mpsc::channel;
 use std::sync::mpsc::Receiver;
@@ -73,6 +75,14 @@ impl Runtime<TaskOut> {
 
     pub fn tx(&self) -> Sender<TaskOut> {
         self.tx.as_ref().expect("Err: tx is None!").clone()
+    }
+
+    extern "C" fn promise_reject_callback<'a>(msg : PromiseRejectMessage<'a>) -> () {
+        let scope = &mut unsafe { v8::CallbackScope::new(&msg) };
+        let v = msg.get_value().unwrap();
+        let s = v.to_rust_string_lossy(scope);
+        println!("\n{}\n{}", "Uncaught error in JS!".red(), s.bright_red());
+        exit(1);
     }
 
     pub fn run_extension(&mut self, args: Vec<String>) -> JoinHandle<()> {
@@ -152,6 +162,9 @@ impl Runtime<TaskOut> {
                 def_safe_property(scope, global, PROMISE_TABLE, prom_map.into());
                 // }
 
+                
+                scope.set_promise_reject_callback(Self::promise_reject_callback);
+
                 if experiental_module_flag {
                     let exp_warning_message = Colorize::yellow("Warning! --module is an experimental flag!\n");
                     
@@ -175,9 +188,7 @@ impl Runtime<TaskOut> {
 
                     let m = main.open(try_catch);
                     
-                    let a = m.evaluate(try_catch).unwrap();
-
-
+                    let a : Local<Promise> = m.evaluate(try_catch).unwrap().try_into().expect("Should be promise!");
 
                     // let main_module = main_module.resolve(
                     //     scope,

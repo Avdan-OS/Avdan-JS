@@ -1,3 +1,5 @@
+// TODO: Refactor
+
 use std::io::Write;
 /**
  * Helper module for the Search API.
@@ -10,9 +12,7 @@ use std::ptr;
 
 use v8::{FunctionCallbackArguments, HandleScope, Object, Local};
 use avdanos_search_macros::permission;
-use crate::Avdan;
-use crate::api::utils_js::{self, _Avdan as _Avdan};
-use crate::core::JSApi;
+use crate::core::{JSApi, def_safe_function};
 
 pub struct AvClipboard {}
 
@@ -24,20 +24,16 @@ impl JSApi for AvClipboard {
         let mut clipboard = v8::ObjectTemplate::new(scope);
         
         clipboard.set_internal_field_count(1);
-
-        // <> Avdan.Clipboard
-
-        ClipSource::assign_functions(scope, &mut clipboard);
-
-        // Clipboard.source
-        clipboard.set(
-            utils_js::js_string(scope, "source").into(),
-            v8::FunctionTemplate::builder(Self::source).build(scope).into(),
-        );
-
-        // </> Avdan.Clipboard
         let instance = clipboard.new_instance(scope).expect("No new instance! Ahhhh!");
 
+        // <> Avdan.Clipboard
+        
+        ClipSource::assign_functions(scope, instance);
+        
+        def_safe_function!(scope, instance, "source", Self::source);
+        
+        // </> Avdan.Clipboard
+        
         instance.set_internal_field(0, v8::String::new(scope, ClipSource::CLIPBOARD.name()).unwrap().into());
 
         return instance;
@@ -231,14 +227,15 @@ impl ClipSource {
         }
     }
 
-    pub fn assign_functions<'s>(scope: &mut v8::HandleScope<'s>, obj: &mut v8::Local<'s, v8::ObjectTemplate>) -> () {
+    pub fn assign_functions<'s>(scope: &mut v8::HandleScope<'s>, obj: v8::Local<'s, v8::Object>) -> () {
         // TODO: Use a macro to make the following less long...
 
         // Clipboard.copy
-        obj.set(
-            utils_js::js_string(scope, "copy").into(),
-            v8::FunctionTemplate::builder(ClipboardJS::copy).build(scope).into(),
-        );
+        let obj  = obj.into();
+        def_safe_function!(scope, obj, "copy", ClipboardJS::copy);
+        def_safe_function!(scope, obj, "copyRaw", ClipboardJS::copy_raw);
+        def_safe_function!(scope, obj, "paste", ClipboardJS::paste);
+        def_safe_function!(scope, obj, "paste", ClipboardJS::paste);
 
         // Clipboard.copyRaw
         obj.set(

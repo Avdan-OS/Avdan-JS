@@ -1,8 +1,12 @@
-// import File from "@avdan/file";
-// import {returnImportedString} from "./test.mjs";
-import testJSON from "./data.json";
+import Clipboard from "@avdan/clipboard";
 
 await Avdan.Debug.wait(100, 1200)
     .on("tick", async tick => {
-        Avdan.Debug.log(testJSON);
+        try {
+            Avdan.Debug.log({
+                text: await Clipboard.source("primary").readText.call(null)
+            });
+        } catch (err) {
+            Avdan.Debug.log(err.toString());
+        }
     });

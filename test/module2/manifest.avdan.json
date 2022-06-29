@@ -1,0 +1,11 @@
+{
+    "name": "module1",
+    "version": "0.0.1",
+    "description": "",
+    "author": "Sammy99jsp",
+    "main": "./Main.js",
+    "security": {
+        "permissions": [],
+        "commands" : []
+    }
+}

@@ -1,3 +1,5 @@
+# Important: we are migrating to a new Discord server https://discord.gg/gRCcCUZ5px
+
 # What is this ?
 
 This repo aims to be a JavaScript environment where AvdanOS extensions can run.

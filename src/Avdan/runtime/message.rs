@@ -1,7 +1,5 @@
 use std::any::TypeId;
-
 use v8::{HandleScope, Local, Value};
-
 use super::PromIndex;
 
 type Out = Vec<u8>;

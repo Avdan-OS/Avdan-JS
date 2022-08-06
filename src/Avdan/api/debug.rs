@@ -23,12 +23,12 @@ enum Colors {
 impl Colors {
     fn to_string(&self) -> String {
         match *self {
-            Colors::String(ref s) => s.truecolor(39, 154, 241).to_string(), // Light-ish Blue
+            Colors::String(ref s)  => s.truecolor(39, 154, 241).to_string(), // Light-ish Blue
             // Colors::SYMBOL(ref s) => s.truecolor(20, 129, 186).to_string(),
-            Colors::Symbol(ref s) => s.truecolor(242, 67, 51).to_string(),
-            Colors::Number(ref s) => s.truecolor(254, 153, 32).to_string(),
+            Colors::Symbol(ref s)  => s.truecolor(242, 67, 51).to_string(),
+            Colors::Number(ref s)  => s.truecolor(254, 153, 32).to_string(),
             Colors::Special(ref s) => s.truecolor(105, 72, 115).to_string(),
-            Colors::Error(ref s) => s.truecolor(239, 91, 91).to_string(),
+            Colors::Error(ref s)   => s.truecolor(239, 91, 91).to_string(),
             Colors::BracketMatch(ref lvl, ref s) => {
                 let level_colors: Vec<(u8, u8, u8)> =
                     vec![(151, 223, 252), (127, 176, 105), (115, 29, 216)];
@@ -68,12 +68,13 @@ impl AvDebug {
     }
 
     // Debug.log
-    pub fn log(
-        scope: &mut HandleScope,
-        args: v8::FunctionCallbackArguments,
-        rv: v8::ReturnValue,
+    pub fn log (
+        scope : &mut HandleScope,
+        args  : v8::FunctionCallbackArguments,
+        rv    : v8::ReturnValue,
     ) -> () {
         let mut out: Vec<String> = vec![];
+        
         for i in 0..args.length() {
             out.push(Self::inspect(scope, args.get(i), Some(0)));
         }
@@ -101,7 +102,7 @@ impl AvDebug {
         mut rv : ReturnValue,
     ) -> () {
         let ticks = args.get(0).int32_value(scope).unwrap_or(10);
-        let ms = args.get(1).int32_value(scope).unwrap_or(1000);
+        let ms    = args.get(1).int32_value(scope).unwrap_or(1000);
 
         println!("Starting timeout!");
 
@@ -129,17 +130,18 @@ impl AvDebug {
         rv.set(prom.into());
     }
 
-    // pub fn fetch(
+    // pub fn fetch (
     //     scope: &mut HandleScope,
     //     args: FunctionCallbackArguments,
     //     mut rv: ReturnValue,
     // ) -> () {
     //     let url = args.get(0).to_rust_string_lossy(scope);
-
-    //     let prom = Task::new(
+    //
+    //     let prom = Task::new (
     //         scope,
     //         move |_tx| {
     //             let req = reqwest::blocking::get(url);
+    //
     //             match req {
     //                 Err(err) => Err(err.to_string()),
     //                 Ok(res) => match res.bytes() {
@@ -148,6 +150,7 @@ impl AvDebug {
     //                 },
     //             }
     //         },
+    //
     //         output::uint8_array
     //     );
 
@@ -159,22 +162,22 @@ impl AvDebug {
         let lvl = level.unwrap_or(0);
         
         match Self::type_of(value) {
-            "promise" => Colors::Special("Promise".to_string()).to_string(), 
+            "promise"  => Colors::Special("Promise".to_string()).to_string(), 
             "uint8_array" => {
                 Colors::BracketMatch(lvl, Self::inspect_uint8_array(scope, value, lvl)).to_string()
             }
-            "array" => Colors::BracketMatch(
+            "array"    => Colors::BracketMatch (
                 lvl,
                 format!("[ {} ]", Self::inspect_array(scope, value, lvl)),
             )
             .to_string(),
             "function" => Colors::Special(Self::inspect_function(scope, value)).to_string(),
-            "string" => Self::inspect_string(scope, value.into()),
-            "number" => {
+            "string"   => Self::inspect_string(scope, value.into()),
+            "number"   => {
                 Colors::Number(format!("{}", value.to_rust_string_lossy(scope))).to_string()
             }
-            "symbol" => Colors::Symbol(Self::inspect_symbol(scope, value)).to_string(),
-            "object" => Colors::BracketMatch (
+            "symbol"   => Colors::Symbol(Self::inspect_symbol(scope, value)).to_string(),
+            "object"   => Colors::BracketMatch (
                 lvl,
                 format! (
                     "{{\n{1}\n{0}}}",
@@ -244,10 +247,10 @@ impl AvDebug {
         
         for i in 0..props.length() {
             let index = v8::Number::new(scope, i as f64);
-            let prop = props.get(scope, index.into()).unwrap();
-            let name = Self::inspect(scope, prop, Some(lvl + 1));
+            let prop  = props.get(scope, index.into()).unwrap();
+            let name  = Self::inspect(scope, prop, Some(lvl + 1));
             let value = obj.get(scope, prop.into()).unwrap();
-            let val = Self::inspect(scope, value, Some(lvl + 1));
+            let val   = Self::inspect(scope, value, Some(lvl + 1));
             out.push(format!(
                 "{0}{1}: {2}",
                 str::repeat("   ", (lvl + 1) as usize),
@@ -272,7 +275,7 @@ impl AvDebug {
 
         return match func.get_name(scope).to_rust_string_lossy(scope).as_str() {
             "" => "[Function (anonymous)]".to_string(),
-            n => format!("[Function: {}]", n).to_string(),
+            n  => format!("[Function: {}]", n).to_string(),
         };
     }
 

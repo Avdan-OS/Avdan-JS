@@ -13,22 +13,20 @@ pub enum Type {
     Result(Result<Out, String>, Builder),
 
     // Allows sending of event messages whilst task is in progress.
-    Auxiliary(String, Out, Builder)
-    /*
-              Name ^ : Data ^ : Builder ^
-    */
+    Auxiliary(String,     Out,    Builder)
+    //        Name ^ : Data ^ : Builder ^
 }
 
 impl Type {
     pub fn message(&self, prom_index: PromIndex) -> Message {
-        Message(
+        Message (
             prom_index,
             self.to_owned()
         )
     }
 }
 
-pub struct Message(
+pub struct Message (
     pub PromIndex,
     pub Type
 );

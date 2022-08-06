@@ -23,7 +23,7 @@ impl AvModInternal {
                 let name  = v8::String::new(scope, name.as_str()).unwrap();
                 let scope = &mut TryCatch::new(scope);
 
-                let module = Module::create_synthetic_module(
+                let module = Module::create_synthetic_module (
                     scope,
                     name,
                     export_names.as_slice(),

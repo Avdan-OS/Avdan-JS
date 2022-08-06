@@ -19,10 +19,12 @@ impl SourceFile {
 
         if !p.exists() {
             p.set_extension("js");
+            
             if !p.exists() {
                 return Err(format!("{}\nPath does not exist !", p.to_str().unwrap()));
             }
         }
+        
         if p.is_dir() {
             return Err("Path is a directory !".to_string());
         }
@@ -87,9 +89,10 @@ impl TryFrom<String> for Specifier {
 
     fn try_from(value: String) -> Result<Self, Self::Error> {
         match value {
-            v if v.is_empty() => Err("Empty resource path!".to_string()),
+            v if v.is_empty()            => Err("Empty resource path!".to_string()),
             v if v.starts_with("@avdan") => Ok(Self::Internal(v[7..].to_string())),
-            v if v.starts_with(".") || v.starts_with("/") => Ok(Self::File(SourceFile::new(v))),
+            v if v.starts_with(".")
+                || v.starts_with("/")    => Ok(Self::File(SourceFile::new(v))),
             v => Ok(Self::Module(ExternalModule::new(v)))
         }
     }
@@ -98,9 +101,9 @@ impl TryFrom<String> for Specifier {
 impl Display for Specifier {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::File(file) => write!(f, "{}({}) -→ {}", "Resource".blue(), "File".purple(), file),
+            Self::File(file)           => write!(f, "{}({}) -→ {}", "Resource".blue(), "File".purple(), file),
             Self::Internal(identifier) => write!(f, "{}({}) -→ {}", "Resource".blue(), "Internal".purple(), identifier),
-            Self::Module(module) => write!(f, "{}({}) -→ {}", "Resource".blue(), "Internal".purple(), module),
+            Self::Module(module)       => write!(f, "{}({}) -→ {}", "Resource".blue(), "Internal".purple(), module),
         }
     }
 }
@@ -108,8 +111,8 @@ impl Display for Specifier {
 impl Hash for Specifier {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
         match self {
-            Specifier::File(source_file) => source_file.hash(state),
-            Specifier::Module(module) => module.hash(state),
+            Specifier::File(source_file)    => source_file.hash(state),
+            Specifier::Module(module)       => module.hash(state),
             Specifier::Internal(identifier) => identifier.hash(state),
         }
     }

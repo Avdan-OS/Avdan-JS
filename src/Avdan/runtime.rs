@@ -70,7 +70,7 @@ pub struct Runtime<T> {
 
 impl Runtime<TaskOut> {
     pub fn new() -> Runtime<TaskOut> {
-        Runtime { tx: None }
+        Runtime { tx : None }
     }
 
     pub fn tx(&self) -> Sender<TaskOut> {
@@ -81,7 +81,9 @@ impl Runtime<TaskOut> {
         let scope = &mut unsafe { v8::CallbackScope::new(&msg) };
         let v = msg.get_value().unwrap();
         let s = v.to_rust_string_lossy(scope);
+        
         println!("\n{}\n{}", "Uncaught error in JS!".red(), s.bright_red());
+        
         exit(1);
     }
 
@@ -97,14 +99,12 @@ impl Runtime<TaskOut> {
 
         let experiental_module_flag = match args.get(2) {
             Some(f) => f.eq("--module"),
-            None => false,
+            None    => false,
         };
 
         let extension = Extension::from_manifest(args.get(1).clone().unwrap());
 
-        /*
-            Async ????
-        */
+        // Async ???
 
         let (tx, rx) = channel();
 
@@ -116,6 +116,7 @@ impl Runtime<TaskOut> {
              * V8 JavaScript (ECMAScript) Engine
              */
             let platform = v8::new_default_platform(0, false).make_shared();
+            
             v8::V8::set_flags_from_string("--harmony-import-assertions");
             v8::V8::initialize_platform(platform);
             v8::V8::initialize();
@@ -154,14 +155,14 @@ impl Runtime<TaskOut> {
                 // Put the async sender into the global JS scope.
                 let tx_ptr: *mut _ = &mut tx.clone();
                 let transmission = v8::External::new(scope, tx_ptr as *mut c_void);
+                
                 def_safe_property(scope, global, TRANSMISSION_KEY, transmission.into());
 
                 // Put the promise map into the JS global scope.
                 let map_ptr: *mut _ = &mut map;
                 let prom_map = External::new(scope, map_ptr as *mut c_void);
+                
                 def_safe_property(scope, global, PROMISE_TABLE, prom_map.into());
-                // }
-
                 
                 scope.set_promise_reject_callback(Self::promise_reject_callback);
 
@@ -169,13 +170,14 @@ impl Runtime<TaskOut> {
                     let exp_warning_message = Colorize::yellow("Warning! --module is an experimental flag!\n");
                     
                     println!("{}\n Do not expect anything to work !", exp_warning_message);
-    
                     
                     let scope = &mut v8::HandleScope::new(scope);
                     let try_catch = &mut TryCatch::new(scope);
+                    
                     AvModStore::into_scope(try_catch);
 
                     let main_module_path = Path::new(extension.main());
+                    
                     let main_module = AvModJS::load_module(
                         try_catch,
                         &main_module_path.canonicalize().unwrap()
@@ -183,7 +185,7 @@ impl Runtime<TaskOut> {
 
                     let main = match main_module {
                         Ok(module) => module,
-                        Err(err) => panic!("\n\n\t{}:\n\t\t{}\n\n", "Error".bright_red(), err)
+                        Err(err)   => panic!("\n\n\t{}:\n\t\t{}\n\n", "Error".bright_red(), err)
                     };
 
                     let m = main.open(try_catch);
@@ -198,9 +200,7 @@ impl Runtime<TaskOut> {
                     // let main = main_module
                     //     .open(scope);
                     
-
                     // main.evaluate(scope).unwrap();
-
 
                     // Check if there was an error in the javascript
                     // Run the script to get the result.
@@ -227,29 +227,36 @@ impl Runtime<TaskOut> {
                                 match Task::get_auxiliary_func(scope, prom, k) {
                                     Some(f) => {
                                         let obj = fn_ptr(scope, contents);
+                                        
                                         let local = unsafe {
                                             transmute::<&PromiseResolver, Local<PromiseResolver>>(
                                                 prom,
                                             )
                                         };
+                                        
                                         f.call(scope, local.into(), &[obj]);
                                     }
+                                    
                                     None => {}
                                 }
                             }
+                            
                             Type::Result(contents, builder) => {
                                 // Get Promise, and resolve it, then remove from the table.
                                 match contents {
                                     Err(txt) => {
                                         let e = v8::String::new(scope, &txt).unwrap();
                                         let err = v8::Exception::error(scope, e);
+                                        
                                         prom.reject(scope, err.into());
                                     }
                                     Ok(result) => {
                                         let r_value = builder(scope, result);
+                                        
                                         prom.resolve(scope, r_value);
                                     }
                                 }
+                                
                                 map.remove(&id);
                             }
                         };
@@ -291,7 +298,8 @@ impl Runtime<TaskOut> {
         let __tbl = ___tbl.expect("Cannot cast prom_tbl into v8::External !");
         let _tbl = __tbl.value() as *mut HashMap<PromIndex, Prom>;
 
-        let tbl = unsafe { _tbl.as_mut() }.expect("Cannot change to mut !");
+        let tbl = unsafe { _tbl.as_mut() }
+            .expect("Cannot change to mut !");
 
         let mut rng = rand::thread_rng();
         let mut i = 0u32;
@@ -301,6 +309,7 @@ impl Runtime<TaskOut> {
         }
 
         tbl.insert(i, prom);
+        
         return i;
     }
 }

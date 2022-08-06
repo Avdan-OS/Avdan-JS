@@ -71,8 +71,7 @@ struct Response;
 
 impl Response {
     fn from_prom_callback<'a>(scope: &mut HandleScope<'a>, mut vec : Vec<u8>) -> Local<'a, Value> {
-
-        let s= vec.as_mut_slice();
+        let s = vec.as_mut_slice();
 
         // let a = unsafe {
         //     ptr::read(s as *mut [u8] as *mut reqwest::blocking::Response)
@@ -94,18 +93,22 @@ trait IntoHeaders {
 impl IntoHeaders for HashMap<String, String> {
     fn into_headers(self) -> Result<HeaderMap<HeaderValue>, String> {
         let mut h = HeaderMap::with_capacity(self.len());
+        
         // TODO: Better error handling...
         for (name, value) in self.iter() {
-            h.append(
+            h.append (
                 match HeaderName::from_str(name) {
                     Ok(h) => h,
                     Err(e) => return Err(format!("{}", e)),
-                }, 
+                },
+                
                 match HeaderValue::from_str(value) {
                     Ok(v) => v,
                     Err(e) => return Err(format!("{}", e)),
-                });
+                }
+            );
         }
+        
         Ok(h)
     }
 }
@@ -123,7 +126,6 @@ impl AvJSObject for Options {
                 return Err(format!("Options must be an object !"));
             }
 
-
             let obj : Local<Object> = obj.try_into().unwrap();
 
             if obj_has_property!(scope, obj, "method") {
@@ -140,6 +142,7 @@ impl AvJSObject for Options {
                 let m = obj_get_property(scope, obj, "body");
                 s.body = Body::deserialize(scope, m).ok();
             }
+            
             Ok(s)
     }
 
@@ -152,15 +155,12 @@ pub struct Fetch;
 
 impl Fetch {
     #[permission(avdan.net.fetch)]
-    pub fn fetch<'a>(
+    pub fn fetch<'a> (
         scope: &mut v8::HandleScope<'a>,
         args : v8::FunctionCallbackArguments,
         mut rv : v8::ReturnValue
     ) -> () {
-
         let udef = v8::undefined(scope);
-
-
         let uri = args.get(0);
 
         if !uri.is_string() {
@@ -180,21 +180,21 @@ impl Fetch {
                 scope.throw_exception(excep);
 
                 rv.set(udef.into());
+                
                 return;
             },
         };
 
         let uri = uri.to_rust_string_lossy(scope);
 
-        let prom = Task::new(
+        let prom = Task::new (
             scope, 
             move |(id, tx)| {
 
                 println!("{}", "#1".blue());
                 let client = reqwest::blocking::Client::new();
 
-
-                let r = client.request(
+                let r = client.request (
                     reqwest::Method::from(opts.method), uri);
 
                 let headers = opts.headers.unwrap_or(HashMap::new())

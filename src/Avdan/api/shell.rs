@@ -9,18 +9,18 @@ use crate::Avdan;
 pub struct AvShell {}
 
 impl AvShell {
-
     // Shell.exec(cmd : string, ...args : string[]) -> ShellResult
     #[permission(avdan.shell.exec)]
-    pub fn exec(
-        scope: &mut HandleScope,
-        args : FunctionCallbackArguments,
+    pub fn exec (
+        scope  : &mut HandleScope,
+        args   : FunctionCallbackArguments,
         mut rv : ReturnValue
     ) -> () {
         if args.length() == 0 {
             let msg = v8::String::new(scope,"No args provided!").unwrap();
             let exception = v8::Exception::type_error(scope, msg);
             scope.throw_exception(exception);
+            
             return;
         }
 
@@ -31,35 +31,38 @@ impl AvShell {
                 let msg = v8::String::new(scope,"Args must all be strings!").unwrap();
                 let exception = v8::Exception::type_error(scope, msg);
                 scope.throw_exception(exception);
+                
                 return;
             }
+            
             cmd_args.push(args.get(i).to_rust_string_lossy(scope));
         }
 
         rv.set(v8::undefined(scope).into());
     }
 
-    fn assign_functions<'a>(
+    fn assign_functions<'a> (
         scope : &mut HandleScope<'a>,
-        obj : Local<Object>
+        obj   : Local<Object>
     ) -> () {
         def_safe_function!(scope, obj, "exec", Self::exec);
     }
 }
 
 impl JSApi for AvShell {
-    fn js<'a>(
+    fn js<'a> (
         &self, 
         scope: &mut v8::HandleScope<'a>
     ) -> Local<'a, Object> {
         let obj = Object::new(scope);
         Self::assign_functions(scope, obj);
+        
         obj
     }
 }
 
 struct ShellObj {
-    args: Vec<String>
+    args : Vec<String>
 }
 
 impl ShellObj {

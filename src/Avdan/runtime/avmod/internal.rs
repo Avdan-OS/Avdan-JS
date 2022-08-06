@@ -1,8 +1,6 @@
 use colored::Colorize;
 use v8::{HandleScope, Global, Module, TryCatch, Local, Context, Value, CallbackScope};
-
 use crate::Avdan::{api::AvdanAPI, utils};
-
 use super::{Specifier, AvModStore};
 
 pub struct AvModInternal {}
@@ -14,20 +12,18 @@ impl AvModInternal {
         match apis.get(name.as_str()) {
             Some(api) => {
                 let obj = api.as_ref().js(scope);
-
                 let mut export_names = vec![v8::String::new(scope, "default").unwrap()];
-
                 let names = obj.get_own_property_names(scope).unwrap();
 
                 for name in utils::array_to_vec::<v8::String>(scope, names) {
                     export_names.push(name);
                 }
+                
                 let _name = name.clone();
-                let name = v8::String::new(scope, name.as_str()).unwrap();
-
+                let name  = v8::String::new(scope, name.as_str()).unwrap();
                 let scope = &mut TryCatch::new(scope);
 
-                let module = Module::create_synthetic_module(
+                let module = Module::create_synthetic_module (
                     scope,
                     name,
                     export_names.as_slice(),
@@ -45,18 +41,20 @@ impl AvModInternal {
                         let excep = scope.exception().unwrap();
                         Err(format!("Error from JS:\n\t{}", excep.to_rust_string_lossy(scope).as_str().bright_red()))
                     },
+                    
                     Some(r) => Ok(Global::new(scope, module))
                 }
             },
+            
             None => Err(format!("{}{} {}", "internal module @avdan/".bright_red(), name.as_str().yellow(), "not found!".bright_red()))
         }
     }
 
-    fn instantiate_callback<'a>(
-        context: v8::Local<'a, v8::Context>,
-        specifier: v8::Local<'a, v8::String>,
-        import_assertions: v8::Local<'a, v8::FixedArray>,
-        referrer: v8::Local<'a, v8::Module>,
+    fn instantiate_callback<'a> (
+        context           : v8::Local<'a, v8::Context>,
+        specifier         : v8::Local<'a, v8::String>,
+        import_assertions : v8::Local<'a, v8::FixedArray>,
+        referrer          : v8::Local<'a, v8::Module>,
      ) -> Option<v8::Local<'a, v8::Module>> {
         // TODO: Resolve properly
         Some(referrer)
@@ -77,6 +75,7 @@ impl AvModInternal {
         let s = &mut unsafe {
             CallbackScope::new(ctx)
         };
+        
         let try_catch = &mut TryCatch::new(s);
 
         let name = store.get_internal(&g).expect("Expected same name!");
@@ -86,7 +85,6 @@ impl AvModInternal {
         let api = apis.get(name.as_str()).unwrap();
 
         let obj = api.js(try_catch);
-
 
         let keys = obj.get_own_property_names(try_catch).unwrap();
 
@@ -107,10 +105,9 @@ impl AvModInternal {
             }
         } 
 
-
         let default = v8::String::new(try_catch, "default").unwrap();
         
-        match module.set_synthetic_module_export(
+        match module.set_synthetic_module_export (
             try_catch,
             default,
             obj.into()

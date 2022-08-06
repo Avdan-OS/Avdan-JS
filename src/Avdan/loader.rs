@@ -3,14 +3,15 @@ use serde::{Serialize, Deserialize};
 use super::security::Constraints;
 
 const MANIFEST_FILE : &str = "manifest.avdan.json";
+
 #[derive(Serialize, Deserialize)]
 pub struct Extension {
-    name: String,
-    version: String,
-    description: String,
-    author: String,
-    main: String,
-    security: super::security::Constraints,
+    name        : String,
+    version     : String,
+    description : String,
+    author      : String,
+    main        : String,
+    security    : super::security::Constraints,
 }
 
 impl Extension {
@@ -31,7 +32,6 @@ impl Extension {
         serde_json::from_str(content.as_str())
     }
 
-
     ///
     /// Parse a `manifest.avdan.json` file into an [`Extension`] struct.
     /// * `path` - Extension's root directory
@@ -42,7 +42,8 @@ impl Extension {
     /// let extension = Extension::from_manifest("./test");
     /// todo!() // Do stuff with the Extension struct
     /// ```
-    /// 
+    ///
+    
     pub fn from_manifest(path: &str) -> Extension {
         if !Self::is_folder(path) {
             panic!("Must provide folder!");
@@ -52,6 +53,7 @@ impl Extension {
         let mut e = Self::parse_manifest(text).expect("Failed to parse manifest file!");
 
         e.main = Path::new(path).join(e.main).to_str().unwrap().to_string();
+        
         return e;
     }
 
@@ -62,6 +64,7 @@ impl Extension {
     /// extension.main()
     /// ```
     /// 
+    
     pub fn main(&self) -> &String {
         return &self.main;
     }

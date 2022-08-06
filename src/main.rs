@@ -5,7 +5,6 @@ use Avdan::Runtime;
 mod Avdan;
 mod core;
 
-
 fn main() {
     let args: Vec<String> = env::args().collect();
 

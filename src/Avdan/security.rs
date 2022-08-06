@@ -1,6 +1,5 @@
 use std::{ffi::c_void, mem};
 use serde::{Serialize, Deserialize};
-
 use super::Permission;
 
 ///
@@ -11,20 +10,20 @@ use super::Permission;
 /// * AvdanOS API access. 
 /// 
 ///
+
 #[derive(Clone, Serialize, Deserialize)]
 pub struct Constraints {
     permissions : Vec<String>,
-    commands: Vec<String>,
+    commands    : Vec<String>,
 }
 
 const SECURITY_KEY : &str = "___SECURITY___";
 
-
 impl Constraints {
     pub fn new<'a>(permissions : Vec<&'a str>, external_commands: Vec<&'a str>) -> Constraints {
         Constraints { 
-            permissions: permissions.iter().map(|p| p.to_string()).collect(),
-            commands: external_commands.iter().map(|p| p.to_string()).collect()
+            permissions : permissions.iter().map(|p| p.to_string()).collect(),
+            commands    : external_commands.iter().map(|p| p.to_string()).collect()
         }
     }
 
@@ -37,8 +36,10 @@ impl Constraints {
             let e = v8::String::new(scope, format!("SecurityException -- Invalid permissions!\nYour extension does not have '{}'.", perm).as_str()).unwrap();
             let err = v8::Exception::error(scope, e);
             scope.throw_exception(err);
+            
             return false;
         }
+        
         return true;
     }   
 
@@ -47,8 +48,10 @@ impl Constraints {
             let e = v8::String::new(scope, format!("SecurityException -- Invalid command declaration!\nYour extension has not declared the use of `{}`.", cmd).as_str()).unwrap();
             let err = v8::Exception::error(scope, e);
             scope.throw_exception(err);
+            
             return false;
         }
+        
         return true;
     }
 
@@ -83,6 +86,7 @@ impl Constraints {
         let external_perms = v8::External::new(scope, perms_unsafe);
 
         let key = v8::String::new(scope, SECURITY_KEY).unwrap();
+        
         global.define_own_property(scope, key.into(), external_perms.into(), v8::READ_ONLY);
     }
 

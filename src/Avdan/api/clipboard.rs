@@ -1,5 +1,3 @@
-// TODO: Refactor
-
 use std::io::Write;
 /**
  * Helper module for the Search API.
@@ -17,7 +15,7 @@ use crate::core::{JSApi, def_safe_function};
 pub struct AvClipboard {}
 
 impl JSApi for AvClipboard {
-    fn js<'s>(
+    fn js<'s> (
         &self,
         scope: &mut v8::HandleScope<'s>
     ) -> Local<'s, Object> {
@@ -41,14 +39,15 @@ impl JSApi for AvClipboard {
 }
 
 impl AvClipboard {
-    pub fn source(
-        scope: &mut v8::HandleScope,
-        args : v8::FunctionCallbackArguments,
+    pub fn source (
+        scope  : &mut v8::HandleScope,
+        args   : v8::FunctionCallbackArguments,
         mut rv : v8::ReturnValue
     ) {
         if !args.get(0).is_string() {
             let except = _Avdan::Error::str("C-CLIP:NO-CLIP-FOUND", "Must be a valid clipboard source!").to_js(scope);
             scope.throw_exception(except.into());
+            
             return;
         }
 
@@ -60,8 +59,6 @@ impl AvClipboard {
             _ => ClipSource::CLIPBOARD.js(scope),
         }.into());
     }
-
-    
 }
 
 #[derive(Copy, Clone)]
@@ -167,13 +164,13 @@ impl ClipSource {
             .arg(self.name())
             .stdin(Stdio::piped())
             .spawn()
-            .expect("Ahhhhhh!");
+            .expect("Argh!");
 
         let child_stdin = cmd.stdin.as_mut().unwrap();
 
         child_stdin
             .write_all(contents.as_bytes())
-            .expect("Ahhh! Cannot write into stdin!");
+            .expect("Cannot write into stdin!");
 
         drop(cmd);
     }
@@ -188,13 +185,13 @@ impl ClipSource {
             .arg(mime_type)
             .stdin(Stdio::piped())
             .spawn()
-            .expect("Ahhhhhh!");
+            .expect("Argh!");
 
         cmd.stdin
             .as_mut()
             .unwrap()
             .write_all(contents)
-            .expect("Could not write into stdin!");
+            .expect("Cannot write into stdin!");
 
         // child_stdin.write_all_vectored(contents).expect("Ahhh! Cannot write into stdin!");
 
@@ -238,25 +235,25 @@ impl ClipSource {
         def_safe_function!(scope, obj, "paste", ClipboardJS::paste);
 
         // Clipboard.copyRaw
-        obj.set(
+        obj.set (
             utils_js::js_string(scope, "copyRaw").into(),
             v8::FunctionTemplate::builder(ClipboardJS::copy_raw).build(scope).into(),
         );
         
         // Clipboard.paste
-        obj.set(
+        obj.set (
             utils_js::js_string(scope, "paste").into(),
             v8::FunctionTemplate::builder(ClipboardJS::paste_text).build(scope).into(),
         );
         
         // Clipboard.clear
-        obj.set(
+        obj.set (
             utils_js::js_string(scope, "clear").into(),
             v8::FunctionTemplate::builder(ClipboardJS::clear).build(scope).into(),
         );
         
         // Clipboard.read
-        obj.set(
+        obj.set (
             utils_js::js_string(scope, "read").into(),
             v8::FunctionTemplate::builder(ClipboardJS::read).build(scope).into(),
         );
@@ -268,13 +265,13 @@ impl ClipSource {
         );
         
         // Clipboard.readText
-        obj.set(
+        obj.set (
             utils_js::js_string(scope, "readText").into(),
             v8::FunctionTemplate::builder(ClipboardJS::read_text).build(scope).into(),
         );
         
         // Clipboard.formats
-        obj.set(
+        obj.set (
             utils_js::js_string(scope, "formats").into(),
             v8::FunctionTemplate::builder(ClipboardJS::formats).build(scope).into(),
         );
@@ -295,11 +292,12 @@ impl ClipSource {
         return instance;
     }
 }
+
 struct ClipboardJS {}
 
 impl ClipboardJS {
     // Get the ClipSource from the parent object.
-    fn get_source<'a, 'b>(
+    fn get_source<'a, 'b> (
         scope: &'a mut HandleScope,
         args: &'b FunctionCallbackArguments,
     ) -> Option<ClipSource> {
@@ -314,14 +312,16 @@ impl ClipboardJS {
     }
 
     // Helper function for Clipboard.copy
-    fn copy_validate<'a, 'b>(
+    fn copy_validate<'a, 'b> (
         scope: &'a mut v8::HandleScope,
         args: &'b v8::FunctionCallbackArguments,
     ) -> Option<String> {
         if args.length() == 0 {
             let exception =
                 _Avdan::Error::str("C-COPY-0000A", "String to copy is empty!").to_js(scope);
+            
             scope.throw_exception(exception.into());
+            
             return None;
         }
 
@@ -331,6 +331,7 @@ impl ClipboardJS {
             let err_str = v8::String::new(scope, "Must supply a string!");
             let exception = v8::Exception::type_error(scope, err_str.unwrap());
             scope.throw_exception(exception);
+            
             return None;
         }
 
@@ -339,10 +340,10 @@ impl ClipboardJS {
 
     // Clipboard.copy
     #[permission(avdan.clipboard.write)]
-    pub fn copy(
-        scope: &mut v8::HandleScope,
-        args: v8::FunctionCallbackArguments,
-        mut rv: v8::ReturnValue,
+    pub fn copy (
+        scope  : &mut v8::HandleScope,
+        args   : v8::FunctionCallbackArguments,
+        mut rv : v8::ReturnValue,
     ) -> () {
         let prom = v8::PromiseResolver::new(scope).unwrap();
         rv.set(prom.into());
@@ -353,6 +354,7 @@ impl ClipboardJS {
                 _Avdan::Error::str("C-COPY-0000", "Must provide a string to copy!").to_js(scope);
             prom.reject(scope, err);
             scope.throw_exception(err);
+            
             return;
         }
 
@@ -375,19 +377,17 @@ impl ClipboardJS {
     // Clipboard.clear
     #[permission(avdan.clipboard.write)]
     pub fn clear(
-        scope: &mut v8::HandleScope,
-        args: v8::FunctionCallbackArguments,
-        mut rv: v8::ReturnValue,
+        scope  : &mut v8::HandleScope,
+        args   : v8::FunctionCallbackArguments,
+        mut rv : v8::ReturnValue,
     ) -> () {
         let prom = v8::PromiseResolver::new(scope).unwrap();
         rv.set(prom.into());
 
         let source = Self::get_source(scope, &args).unwrap();
-
         source.set_contents("".to_string());
 
         let undef = v8::undefined(scope);
-
         prom.resolve(scope, undef.into());
     }
 
@@ -397,9 +397,11 @@ impl ClipboardJS {
         if args.length() < 2 {
             return false;
         }
+        
         if !args.get(1).is_uint8_array() {
             return false;
         }
+        
         if !args.get(0).is_string() {
             return false;
         }
@@ -409,10 +411,10 @@ impl ClipboardJS {
 
     // Clipboard.copyRaw
     #[permission(avdan.clipboard.write)]
-    pub fn copy_raw(
-        scope: &mut v8::HandleScope,
-        args: v8::FunctionCallbackArguments,
-        mut rv: v8::ReturnValue,
+    pub fn copy_raw (
+        scope  : &mut v8::HandleScope,
+        args   : v8::FunctionCallbackArguments,
+        mut rv : v8::ReturnValue,
     ) -> () {
         let prom = v8::PromiseResolver::new(scope).unwrap();
 
@@ -421,6 +423,7 @@ impl ClipboardJS {
         if !Self::check_args_raw_copy(&args) {
             let udef = v8::undefined(scope);
             prom.resolve(scope, udef.into());
+            
             return;
         }
         // Get the MIME type of the data,
@@ -439,6 +442,7 @@ impl ClipboardJS {
         unsafe {
             bytes.set_len(content.byte_length());
         }
+        
         let t = store.data().unwrap().as_ptr() as *const u8;
         unsafe {
             ptr::copy_nonoverlapping(
@@ -457,14 +461,15 @@ impl ClipboardJS {
 
     // Helper functions for Clipboard.read
 
-    fn read_validate(
-        scope: &mut v8::HandleScope,
-        _args: &v8::FunctionCallbackArguments,
+    fn read_validate (
+        scope : &mut v8::HandleScope,
+        _args : &v8::FunctionCallbackArguments,
     ) -> Option<Vec<String>> {
         if _args.length() == 0 {
             let err_str = v8::String::new(scope, "Must supply at least one type!");
             let e = v8::Exception::type_error(scope, err_str.unwrap());
             scope.throw_exception(e);
+            
             return None;
         }
 
@@ -475,15 +480,17 @@ impl ClipboardJS {
             if !_args.get(i).is_string() {
                 let err_str = v8::String::new(scope, "Types must be strings!");
                 v8::Exception::type_error(scope, err_str.unwrap());
+                
                 return None;
             }
+            
             mime_types.push(_args.get(i).to_rust_string_lossy(scope));
         }
 
         return mime_types.into();
     }
 
-    fn read_js_arr<'a>(
+    fn read_js_arr<'a> (
         scope: &mut v8::HandleScope<'a>,
         res: Option<(String, String)>,
     ) -> v8::Local<'a, v8::Array> {
@@ -510,10 +517,10 @@ impl ClipboardJS {
 
     // Clipboard.readRaw
     #[permission(avdan.clipboard.read)]
-    pub fn read_raw(
-        scope: &mut v8::HandleScope,
-        args: v8::FunctionCallbackArguments,
-        mut rv: v8::ReturnValue,
+    pub fn read_raw (
+        scope  : &mut v8::HandleScope,
+        args   : v8::FunctionCallbackArguments,
+        mut rv : v8::ReturnValue,
     ) -> () {
         let prom = v8::PromiseResolver::new(scope).unwrap();
 
@@ -525,9 +532,7 @@ impl ClipboardJS {
         }
 
         let source = Self::get_source(scope, &args).unwrap();
-
         let res = source.get_raw_contents(types.unwrap());
-
         let res_tuple = v8::Array::new(scope, 2);
 
         if res == None {
@@ -535,6 +540,7 @@ impl ClipboardJS {
             res_tuple.set_index(scope, 0, undef.into());
             res_tuple.set_index(scope, 1, undef.into());
             prom.resolve(scope, res_tuple.into());
+            
             return;
         }
 
@@ -558,10 +564,10 @@ impl ClipboardJS {
 
     // Clipboard.read
     #[permission(avdan.clipboard.read)]
-    pub fn read(
-        scope: &mut v8::HandleScope,
-        args: v8::FunctionCallbackArguments,
-        mut rv: v8::ReturnValue,
+    pub fn read (
+        scope  : &mut v8::HandleScope,
+        args   : v8::FunctionCallbackArguments,
+        mut rv : v8::ReturnValue,
     ) -> () {
         let prom = v8::PromiseResolver::new(scope).unwrap();
 
@@ -573,9 +579,7 @@ impl ClipboardJS {
         }
 
         let source = Self::get_source(scope, &args).unwrap();
-
         let res = source.get_contents(types.unwrap());
-
         let res_arr = Self::read_js_arr(scope, res);
 
         prom.resolve(scope, res_arr.into());
@@ -583,9 +587,9 @@ impl ClipboardJS {
 
     // Clipboard.readText
     #[permission(avdan.clipboard.read)]
-    pub fn read_text(
-        scope: &mut v8::HandleScope,
-        args : v8::FunctionCallbackArguments,
+    pub fn read_text (
+        scope  : &mut v8::HandleScope,
+        args   : v8::FunctionCallbackArguments,
         mut rv : v8::ReturnValue
     ) -> () {
         let prom = v8::PromiseResolver::new(scope).unwrap();
@@ -600,20 +604,18 @@ impl ClipboardJS {
 
     // Clipboard.formats
     #[permission(avdan.clipboard.read)]
-    pub fn formats(
-        scope: &mut v8::HandleScope,
-        args : v8::FunctionCallbackArguments,
+    pub fn formats (
+        scope  : &mut v8::HandleScope,
+        args   : v8::FunctionCallbackArguments,
         mut rv : v8::ReturnValue
-    ) -> ()  {
+    ) -> () {
         let prom = v8::PromiseResolver::new(scope).unwrap();
         rv.set(prom.into());
         
         let source = Self::get_source(scope, &args).unwrap();
-
         let fs = source.get_formats();
-      
         let res = v8::Array::new(scope, fs.len() as i32);
-      
+
         for (i, x) in fs.iter().enumerate() {
           let index = v8::Number::new(scope, i as f64);
           let str = v8::String::new(scope, x.as_str()).unwrap();
@@ -625,20 +627,21 @@ impl ClipboardJS {
 
     // Clipboard.paste
     #[permission(avdan.clipboard.type)]
-    pub fn paste_text(
-        scope: &mut v8::HandleScope,
-        args : v8::FunctionCallbackArguments,
+    pub fn paste_text (
+        scope  : &mut v8::HandleScope,
+        args   : v8::FunctionCallbackArguments,
         mut rv : v8::ReturnValue
     ) -> () {
         if args.length() == 0 || !args.get(0).is_string() { 
           let err_str = v8::String::new(scope, "No text provided!").unwrap();
           v8::Exception::type_error(scope, err_str);
+            
           return;
         }
       
         let contents = args.get(0).to_rust_string_lossy(scope);
-      
         let mut delay : u64 = 500;
+        
         if args.length() == 2 && args.get(1).is_number() {
           delay = args.get(1).integer_value(scope).unwrap_or(500) as u64;
         }
@@ -647,11 +650,11 @@ impl ClipboardJS {
         rv.set(prom.into());
       
         let res = ClipSource::paste_text(contents, delay);
-      
         let udef = v8::undefined(scope);
       
         if res {
           prom.resolve(scope, udef.into());
+           
           return;
         }
       

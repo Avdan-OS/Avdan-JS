@@ -46,6 +46,7 @@ impl JSApi for AvDebug {
         let obj = v8::Object::new(scope);
         def_safe_function!(scope, obj, "log", AvDebug::log);
         def_safe_function!(scope, obj, "wait", AvDebug::wait);
+        
         obj
     }
 }
@@ -94,22 +95,22 @@ impl AvDebug {
     }
 
     // Debug.log
-    pub fn wait(
-        scope: &mut HandleScope,
-        args: FunctionCallbackArguments,
-        mut rv: ReturnValue,
+    pub fn wait (
+        scope  : &mut HandleScope,
+        args   : FunctionCallbackArguments,
+        mut rv : ReturnValue,
     ) -> () {
         let ticks = args.get(0).int32_value(scope).unwrap_or(10);
         let ms = args.get(1).int32_value(scope).unwrap_or(1000);
 
         println!("Starting timeout!");
 
-        let prom = Task::new(
+        let prom = Task::new (
             scope, 
             move |(id, tx)| {
                 for tick in 0..ticks {
                     std::thread::sleep(Duration::from_millis(ms.try_into().unwrap()));
-                    tx.send(
+                    tx.send (
                         Type::Auxiliary(
                             "tick".to_string(),
                             vec![tick as u8],
@@ -121,6 +122,7 @@ impl AvDebug {
                 }
                 Ok(vec![])
             },
+            
             output::void
         );
 
@@ -155,6 +157,7 @@ impl AvDebug {
     // Simple inspector <Not Complete>
     pub fn inspect(scope: &mut HandleScope, value: Local<Value>, level: Option<u8>) -> String {
         let lvl = level.unwrap_or(0);
+        
         match Self::type_of(value) {
             "promise" => Colors::Special("Promise".to_string()).to_string(), 
             "uint8_array" => {
@@ -171,9 +174,9 @@ impl AvDebug {
                 Colors::Number(format!("{}", value.to_rust_string_lossy(scope))).to_string()
             }
             "symbol" => Colors::Symbol(Self::inspect_symbol(scope, value)).to_string(),
-            "object" => Colors::BracketMatch(
+            "object" => Colors::BracketMatch (
                 lvl,
-                format!(
+                format! (
                     "{{\n{1}\n{0}}}",
                     str::repeat("   ", lvl as usize),
                     Self::inspect_object(scope, value, lvl)
@@ -191,6 +194,7 @@ impl AvDebug {
             .split("\n")
             .map(|s| Colors::String(format!("\"{}\"", s)).to_string())
             .collect();
+        
         return list.join("\n  + ");
     }
 
@@ -205,6 +209,7 @@ impl AvDebug {
 
         // Get the first 32 items.
         let mut items: Vec<String> = vec![];
+        
         for i in 0..(if array.length() > 32 {
             32
         } else {
@@ -214,7 +219,7 @@ impl AvDebug {
             let el = array.get(scope, index.into()).unwrap();
             items.push(Self::inspect(scope, el, Some(lvl + 1)));
         }
-        return format!(
+        return format! (
             "{0}{1}",
             items.join(", "),
             (if array.length() > 32 {
@@ -236,6 +241,7 @@ impl AvDebug {
 
         let props = obj.get_own_property_names(scope).unwrap();
         let mut out: Vec<String> = vec![];
+        
         for i in 0..props.length() {
             let index = v8::Number::new(scope, i as f64);
             let prop = props.get(scope, index.into()).unwrap();
@@ -249,6 +255,7 @@ impl AvDebug {
                 val
             ));
         }
+        
         return format!("{0}", out.join(", \n"));
     }
 
@@ -291,12 +298,13 @@ impl AvDebug {
     fn inspect_uint8_array(scope: &mut HandleScope, uint8_arr: Local<Value>, lvl: u8) -> String {
         let p = &*uint8_arr;
 
-        let arr: &v8::Uint8Array = unsafe {
+        let arr : &v8::Uint8Array = unsafe {
             std::mem::transmute::<*const Value, *const v8::Uint8Array>(p)
                 .as_ref()
                 .unwrap()
         };
-        return format!(
+        
+        return format! (
             "{}({})",
             Colors::Special("Uint8Array".to_string()).to_string(),
             arr.byte_length()

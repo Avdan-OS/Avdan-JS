@@ -59,5 +59,4 @@ pub fn permission(attr: TokenStream, content : TokenStream) -> TokenStream {
             fn_item.to_token_stream().into()
         }
     }
-    
 }
